@@ -165,12 +165,15 @@ CREATE TYPE IF NOT EXISTS public.order_status AS ENUM (
 );
 
 -- Méthodes de paiement
+-- Mise à jour pour correspondre aux méthodes disponibles dans l'application
 CREATE TYPE IF NOT EXISTS public.payment_method AS ENUM (
-  'orange_money',
-  'mtn_momo',
-  'cash_on_delivery',
-  'bank_transfer',
-  'credit_card'
+  'card',              -- Carte bancaire (Visa, Mastercard, American Express)
+  'paypal',            -- PayPal
+  'orange_money',      -- Orange Money
+  'mtn_momo',          -- MTN Mobile Money
+  'binance',           -- Binance Pay (crypto-monnaie)
+  'cash_on_delivery',  -- Paiement à la livraison
+  'bank_transfer'      -- Virement bancaire
 );
 
 -- Statuts de paiement
@@ -238,6 +241,14 @@ CREATE TABLE IF NOT EXISTS public.payments (
   transaction_id TEXT, -- ID de transaction Orange Money, MTN MoMo, etc.
   transaction_reference TEXT,
   payment_proof_url TEXT, -- Capture d'écran du paiement
+  -- Informations spécifiques selon la méthode de paiement
+  card_last_four TEXT, -- 4 derniers chiffres de la carte (pour 'card')
+  card_holder_name TEXT, -- Nom sur la carte (pour 'card')
+  paypal_email TEXT, -- Email PayPal (pour 'paypal')
+  phone_number TEXT, -- Numéro de téléphone (pour 'orange_money', 'mtn_momo')
+  binance_email TEXT, -- Email Binance (pour 'binance')
+  binance_wallet TEXT, -- Adresse wallet Binance (pour 'binance')
+  metadata JSONB, -- Données supplémentaires selon la méthode (ex: CVV masqué, date expiration)
   paid_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
@@ -460,7 +471,50 @@ CREATE TABLE IF NOT EXISTS public.search_history (
 );
 
 -- =====================================================
--- 11. CONFIGURATION ET PARAMÈTRES
+-- 11. CONTENU ET FAQ
+-- =====================================================
+
+-- Table: faq_categories (Catégories de FAQ)
+CREATE TABLE IF NOT EXISTS public.faq_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  icon TEXT, -- Nom de l'icône Lucide React
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Table: faq_items (Questions/Réponses FAQ)
+CREATE TABLE IF NOT EXISTS public.faq_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID REFERENCES public.faq_categories(id) ON DELETE CASCADE NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  views INTEGER DEFAULT 0,
+  helpful_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Table: content_pages (Pages de contenu statique)
+-- Pour gérer les pages Terms, Privacy, Legal Notice de manière dynamique
+CREATE TABLE IF NOT EXISTS public.content_pages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL UNIQUE, -- 'terms-of-service', 'privacy-policy', 'legal-notice'
+  title TEXT NOT NULL,
+  content TEXT NOT NULL, -- Contenu HTML ou Markdown
+  meta_description TEXT,
+  is_published BOOLEAN DEFAULT true,
+  published_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by UUID REFERENCES auth.users(id)
+);
+
+-- =====================================================
+-- 12. CONFIGURATION ET PARAMÈTRES
 -- =====================================================
 
 -- Table: site_settings (Paramètres du site)
@@ -474,7 +528,7 @@ CREATE TABLE IF NOT EXISTS public.site_settings (
 );
 
 -- =====================================================
--- 12. INDEX POUR PERFORMANCE
+-- 13. INDEX POUR PERFORMANCE
 -- =====================================================
 
 -- Index sur les colonnes fréquemment utilisées pour les recherches
@@ -506,8 +560,14 @@ CREATE INDEX IF NOT EXISTS idx_vendors_city ON public.vendors(city);
 CREATE INDEX IF NOT EXISTS idx_vendors_is_verified ON public.vendors(is_verified);
 CREATE INDEX IF NOT EXISTS idx_vendors_is_active ON public.vendors(is_active);
 
+CREATE INDEX IF NOT EXISTS idx_faq_items_category_id ON public.faq_items(category_id);
+CREATE INDEX IF NOT EXISTS idx_faq_items_is_active ON public.faq_items(is_active);
+CREATE INDEX IF NOT EXISTS idx_faq_categories_is_active ON public.faq_categories(is_active);
+CREATE INDEX IF NOT EXISTS idx_content_pages_slug ON public.content_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_content_pages_is_published ON public.content_pages(is_published);
+
 -- =====================================================
--- 13. ROW LEVEL SECURITY (RLS)
+-- 14. ROW LEVEL SECURITY (RLS)
 -- =====================================================
 
 -- Activer RLS sur toutes les tables
@@ -535,9 +595,12 @@ ALTER TABLE public.coupon_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promotions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shipping_methods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.faq_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.faq_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.content_pages ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
--- 14. POLITIQUES RLS (Exemples de base)
+-- 15. POLITIQUES RLS (Exemples de base)
 -- =====================================================
 
 -- Profiles: Lecture publique, modification par propriétaire
@@ -607,10 +670,48 @@ CREATE POLICY IF NOT EXISTS "Reviews are viewable by everyone"
 CREATE POLICY IF NOT EXISTS "Authenticated users can create reviews"
   ON public.product_reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- FAQ Categories: Lecture publique des catégories actives
+CREATE POLICY IF NOT EXISTS "FAQ categories are viewable by everyone"
+  ON public.faq_categories FOR SELECT USING (is_active = true);
+
+-- FAQ Items: Lecture publique des items actifs
+CREATE POLICY IF NOT EXISTS "FAQ items are viewable by everyone"
+  ON public.faq_items FOR SELECT USING (is_active = true);
+
+-- Content Pages: Lecture publique des pages publiées
+CREATE POLICY IF NOT EXISTS "Published content pages are viewable by everyone"
+  ON public.content_pages FOR SELECT USING (is_published = true);
+
+-- Content Pages: Modification par les admins uniquement
+CREATE POLICY IF NOT EXISTS "Admins can manage content pages"
+  ON public.content_pages FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- FAQ: Modification par les admins uniquement
+CREATE POLICY IF NOT EXISTS "Admins can manage FAQ"
+  ON public.faq_categories FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY IF NOT EXISTS "Admins can manage FAQ items"
+  ON public.faq_items FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- Note: Ajoutez d'autres politiques selon vos besoins spécifiques
 
 -- =====================================================
--- 15. FONCTIONS ET TRIGGERS
+-- 16. FONCTIONS ET TRIGGERS
 -- =====================================================
 
 -- Fonction pour mettre à jour updated_at automatiquement
@@ -645,6 +746,18 @@ CREATE TRIGGER update_orders_updated_at
 
 CREATE TRIGGER update_payments_updated_at 
   BEFORE UPDATE ON public.payments 
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_faq_categories_updated_at 
+  BEFORE UPDATE ON public.faq_categories 
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_faq_items_updated_at 
+  BEFORE UPDATE ON public.faq_items 
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_content_pages_updated_at 
+  BEFORE UPDATE ON public.content_pages 
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Fonction pour créer un profil lors de l'inscription
@@ -753,6 +866,20 @@ CREATE TRIGGER update_vendor_stats_trigger
   AFTER INSERT OR UPDATE OR DELETE ON public.vendor_reviews
   FOR EACH ROW EXECUTE FUNCTION public.update_vendor_stats();
 
+-- Fonction pour incrémenter les vues de FAQ
+CREATE OR REPLACE FUNCTION public.increment_faq_views()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.faq_items
+  SET views = views + 1
+  WHERE id = NEW.id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Note: Ce trigger peut être ajouté côté application plutôt que base de données
+-- pour éviter les problèmes de performance. À utiliser avec précaution.
+
 -- =====================================================
 -- FIN DU SCHÉMA
 -- =====================================================
@@ -764,4 +891,11 @@ CREATE TRIGGER update_vendor_stats_trigger
 -- 4. Les fonctions de statistiques peuvent être optimisées avec des vues matérialisées
 -- 5. Pour la production, considérez l'ajout de partitions pour les tables volumineuses
 --    (orders, product_views, notifications, etc.)
+--
+-- Mises à jour récentes:
+-- - Ajout des méthodes de paiement: 'card', 'paypal', 'binance' pour correspondre à l'application
+-- - Ajout de la table faq_categories et faq_items pour gérer les FAQs dynamiquement
+-- - Ajout de la table content_pages pour gérer les pages de contenu statique (Terms, Privacy, Legal)
+-- - Ajout des index et politiques RLS pour les nouvelles tables
+-- - Ajout des triggers pour updated_at sur les nouvelles tables
 
