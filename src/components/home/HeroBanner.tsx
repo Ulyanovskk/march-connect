@@ -29,7 +29,7 @@ const HeroBanner = () => {
             Le Marché Sans Frontières
           </h1>
           <p className="text-lg md:text-xl text-white/90 mb-8">
-            Achetez et vendez vos équipements électroniques en toute confiance partout au Cameroun 🇨🇲
+            Achetez et vendez vos équipements électroniques en toute confiance partout au Cameroun
           </p>
 
           {/* CTA Buttons */}
@@ -48,7 +48,7 @@ const HeroBanner = () => {
               asChild 
               size="lg" 
               variant="outline" 
-              className="border-white text-white hover:bg-white/10"
+              className="border-white/80 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm font-semibold"
             >
               <Link to="/signup?vendor=true">
                 Devenir vendeur
