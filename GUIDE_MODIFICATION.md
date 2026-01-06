@@ -172,10 +172,10 @@ Ce guide vous explique où modifier les différents éléments de votre site web
    - Lignes 52-55 : Conditions d'utilisation, politique de confidentialité
 
 4. **Coordonnées de contact**
-   - **Téléphone :** Ligne 62 - Actuellement `"+237 XXX XXX XXX"`
+   - **Téléphone :** Ligne 62 - Actuellement `"+237 695 250 379"`
    - **Email :** Ligne 67 - Actuellement `"contact@yarid.cm"`
    - **Adresse :** Ligne 72 - Adresse physique
-   - **WhatsApp :** Ligne 13 - URL WhatsApp `"https://wa.me/237600000000"`
+   - **WhatsApp :** Ligne 13 - URL WhatsApp `"https://wa.me/237 695 250 379"`
 
 5. **Réseaux sociaux**
    - Lignes 79-93 : URLs des réseaux sociaux (Facebook, Instagram, Twitter)
@@ -258,7 +258,7 @@ Fichiers **statiques publics** accessibles directement :
 
 ---
 
-## 🔄 MODIFIER LES ROUTES (URLs)
+##  MODIFIER LES ROUTES (URLs)
 
 **Fichier :** `src/App.tsx`
 
@@ -274,7 +274,7 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## 🎨 MODIFIER LES COULEURS ET STYLES
+##  MODIFIER LES COULEURS ET STYLES
 
 ### Couleurs principales
 
@@ -307,7 +307,7 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## 📝 MODIFIER LES DONNÉES DE DÉMONSTRATION
+##  MODIFIER LES DONNÉES DE DÉMONSTRATION
 
 **Fichier :** `src/lib/demo-data.ts`
 

@@ -10,7 +10,7 @@ const Footer = () => {
     <footer className="bg-primary text-primary-foreground">
       {/* WhatsApp floating button */}
       <a
-        href="https://wa.me/237600000000"
+        href="https://wa.me/237695250379"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-secondary flex items-center justify-center shadow-medium hover:scale-110 transition-transform touch-target"
@@ -62,7 +62,7 @@ const Footer = () => {
             <ul className="space-y-3 text-sm text-primary-foreground/80">
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-secondary" />
-                <span>+237 6XX XXX XXX</span>
+                <span>+237 695 250 379</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-secondary" />
@@ -77,7 +77,7 @@ const Footer = () => {
               asChild
               className="mt-4 w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground border-0"
             >
-              <a href="https://wa.me/237600000000" target="_blank" rel="noopener noreferrer">
+              <a href="https://wa.me/237695250379" target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 WhatsApp
               </a>
