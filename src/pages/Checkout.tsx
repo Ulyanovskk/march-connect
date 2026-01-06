@@ -117,40 +117,55 @@ const Checkout = () => {
 
             {/* Colonne droite : récapitulatif paiement */}
             <div className="lg:col-span-1">
-              <div className="bg-card rounded-2xl p-6 shadow-soft sticky top-24 space-y-4">
-                <h2 className="font-semibold text-lg">Récapitulatif du paiement</h2>
+              <div className="bg-card rounded-2xl p-6 shadow-soft sticky top-24">
+                <h2 className="font-semibold text-lg mb-6">Récapitulatif du paiement</h2>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total produits</span>
-                    <span className="font-medium">{formatPrice(total)}</span>
+                {/* Layout horizontal bien organisé */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Total produits</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <p className="font-semibold text-base whitespace-nowrap">{formatPrice(total)}</p>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Frais de livraison</span>
-                    <span className="text-yarid-green">À confirmer avec le vendeur</span>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Frais de livraison</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <p className="text-sm text-accent font-medium whitespace-nowrap">À confirmer</p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">Montant estimé</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <p className="font-bold text-2xl text-primary whitespace-nowrap">
+                        {formatPrice(total)}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <Separator className="my-4" />
+                <Separator className="my-6" />
 
-                <div className="flex justify-between items-baseline">
-                  <span className="font-semibold">Montant estimé</span>
-                  <span className="font-bold text-2xl text-primary">
-                    {formatPrice(total)}
-                  </span>
+                {/* Informations importantes */}
+                <div className="mb-6">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Le montant final (avec livraison) sera confirmé par un agent YARID sur WhatsApp avant validation.
+                  </p>
                 </div>
 
-                <p className="text-xs text-muted-foreground">
-                  Le montant final (avec livraison) sera confirmé par un agent YARID sur WhatsApp avant validation.
-                </p>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-3">
+                {/* Boutons d'action */}
+                <div className="space-y-3 mb-6">
                   <Button
                     asChild
                     size="lg"
-                    className="w-full h-12 text-base font-semibold gap-2"
+                    className="w-full h-14 text-base font-semibold gap-2"
                   >
                     <Link to="/cart">
                       Modifier mon panier
@@ -159,7 +174,7 @@ const Checkout = () => {
 
                   <Button
                     size="lg"
-                    className="w-full h-12 text-base font-semibold gap-2 bg-yarid-green hover:bg-yarid-green/90"
+                    className="w-full h-14 text-base font-semibold bg-green-600 hover:bg-green-700 text-white"
                     onClick={() => {
                       const orderDetails = items.map(item => 
                         `- ${item.name} x${item.quantity}: ${formatPrice(item.price * item.quantity)}`
@@ -174,13 +189,14 @@ const Checkout = () => {
                   </Button>
                 </div>
 
-                <Separator className="my-4" />
+                <Separator className="my-6" />
 
+                {/* Garanties de sécurité */}
                 <div className="space-y-2 text-xs text-muted-foreground">
-                  <p className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-primary" />
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <span>Paiement sécurisé (Mobile Money ou Cash à la livraison).</span>
-                  </p>
+                  </div>
                   <p>Un agent vous contactera pour valider les détails et la livraison.</p>
                 </div>
               </div>
