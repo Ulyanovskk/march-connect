@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, ShieldCheck, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, ShieldCheck, MapPin, Phone, MessageCircle } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -174,7 +174,8 @@ const Checkout = () => {
 
                   <Button
                     size="lg"
-                    className="w-full h-14 text-base font-semibold bg-green-600 hover:bg-green-700 text-white"
+                    variant="outline"
+                    className="w-full h-14 text-base font-semibold gap-2 border-yarid-green text-yarid-green hover:bg-yarid-green/5"
                     onClick={() => {
                       const orderDetails = items.map(item => 
                         `- ${item.name} x${item.quantity}: ${formatPrice(item.price * item.quantity)}`
@@ -185,6 +186,7 @@ const Checkout = () => {
                       window.open(`https://wa.me/237600000000?text=${message}`, '_blank');
                     }}
                   >
+                    <MessageCircle className="w-5 h-5" />
                     Confirmer par WhatsApp
                   </Button>
                 </div>
