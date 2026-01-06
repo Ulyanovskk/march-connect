@@ -66,7 +66,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
             </Link>
 
             {/* User */}
-            <Link to="/auth" className="hidden sm:block">
+            <Link to="/login" className="hidden sm:block">
               <Button variant="outline" size="sm" className="gap-2">
                 <User className="h-4 w-4" />
                 Connexion
@@ -112,7 +112,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               Catalogue
             </Link>
             <Link
-              to="/auth"
+              to="/login"
               className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target"
               onClick={() => setIsMenuOpen(false)}
             >
