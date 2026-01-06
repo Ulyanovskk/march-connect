@@ -71,7 +71,7 @@ const VendorInscription = () => {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-primary p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-10" />
-        <div className="relative z-10">
+        <div className="relative z-10 space-y-8">
           <Link to="/" className="flex items-center gap-3">
             <img 
               src={yaridLogo} 
@@ -79,44 +79,44 @@ const VendorInscription = () => {
               className="h-12 w-auto object-contain bg-white rounded-lg p-1"
             />
           </Link>
-        </div>
-        
-        <div className="relative z-10 space-y-6">
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            Ouvrez votre boutique sur YARID 🚀
-          </h1>
-          <p className="text-white/80 text-lg">
-            Rejoignez des centaines de vendeurs camerounais et touchez des milliers de clients partout au Cameroun.
-          </p>
           
-          <div className="space-y-4 pt-6">
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
+          <div className="space-y-6">
+            <h1 className="text-4xl font-bold text-white leading-tight">
+              Ouvrez votre boutique sur YARID 🚀
+            </h1>
+            <p className="text-white/80 text-lg">
+              Rejoignez des centaines de vendeurs camerounais et touchez des milliers de clients partout au Cameroun.
+            </p>
+            
+            <div className="space-y-4 pt-6">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4" />
+                </div>
+                <span>Inscription gratuite et sans frais de mise en place</span>
               </div>
-              <span>Inscription gratuite et sans frais de mise en place</span>
-            </div>
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4" />
+                </div>
+                <span>Commission de seulement 15% sur les ventes</span>
               </div>
-              <span>Commission de seulement 15% sur les ventes</span>
-            </div>
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4" />
+                </div>
+                <span>Tableau de bord complet pour gérer vos produits</span>
               </div>
-              <span>Tableau de bord complet pour gérer vos produits</span>
-            </div>
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4" />
+                </div>
+                <span>Support dédié pour les vendeurs</span>
               </div>
-              <span>Support dédié pour les vendeurs</span>
             </div>
           </div>
         </div>
-
+        
         <div className="relative z-10 text-white/60 text-sm">
           © 2024 YARID. Tous droits réservés.
         </div>
