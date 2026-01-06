@@ -101,6 +101,76 @@ Ce guide vous explique où modifier les différents éléments de votre site web
 - Message d'erreur 404
 - Texte du bouton retour
 
+###  Page Checkout (Finalisation de commande)
+
+**Fichier :** `src/pages/Checkout.tsx`
+- **Textes à modifier :**
+  - Titre : ligne 49 - `"Finaliser ma commande"`
+  - Sous-titre : ligne 51
+  - Titre section articles : ligne 66 - `"Articles dans votre commande"`
+  - Titre section informations : ligne 99 - `"Informations de contact & livraison"`
+  - Textes des boutons (lignes 171-190)
+  - Messages d'information sur la livraison
+
+###  Page Payment (Paiement)
+
+**Fichier :** `src/pages/Payment.tsx`
+- **Textes à modifier :**
+  - Titre : ligne 118 - `"Paiement sécurisé"`
+  - Sous-titre : ligne 120
+  - Titre section méthode : ligne 137 - `"Méthode de paiement"`
+  - Labels des méthodes de paiement (carte, PayPal, Orange Money, MTN MoMo, Binance)
+  - Placeholders des champs de formulaire selon la méthode choisie
+  - Textes des boutons de paiement
+
+###  Page Order Confirmation (Confirmation de commande)
+
+**Fichier :** `src/pages/OrderConfirmation.tsx`
+- **Textes à modifier :**
+  - Titre : ligne 20 - `"Commande confirmée !"`
+  - Message de confirmation
+  - Numéro de commande (format : YAR-2026-001234)
+  - Textes des boutons de navigation
+
+###  Page Terms of Service (Conditions d'utilisation)
+
+**Fichier :** `src/pages/TermsOfService.tsx`
+- **Textes à modifier :**
+  - Tous les textes des sections (11 sections)
+  - Informations de contact (ligne 150+)
+  - Coordonnées et détails légaux
+
+###  Page Privacy Policy (Politique de confidentialité)
+
+**Fichier :** `src/pages/PrivacyPolicy.tsx`
+- **Textes à modifier :**
+  - Tous les textes des sections (11 sections)
+  - Informations sur la collecte et l'utilisation des données
+  - Coordonnées pour les questions de confidentialité (ligne 160+)
+
+###  Page Legal Notice (Mentions légales)
+
+**Fichier :** `src/pages/LegalNotice.tsx`
+- **Textes à modifier :**
+  - Informations sur l'entreprise (section 1)
+  - Directeur de publication (section 2)
+  - Informations d'hébergement (section 3)
+  - Coordonnées légales (section 10)
+
+###  Page FAQ (Foire Aux Questions)
+
+**Fichier :** `src/pages/FAQ.tsx`
+- **Textes à modifier :**
+  - Titre principal : ligne 20 - `"Foire Aux Questions"`
+  - Toutes les questions et réponses dans les 6 catégories :
+    - Commandes et Paiement
+    - Livraison
+    - Retours et Remboursements
+    - Compte et Sécurité
+    - Vendre sur YARID
+    - Autres Questions
+  - Section contact en bas de page
+
 ---
 
 ##  MODIFIER LES IMAGES ET LOGOS
@@ -162,8 +232,8 @@ Ce guide vous explique où modifier les différents éléments de votre site web
 
 **Éléments à modifier :**
 
-1. **Description de la marque**
-   - Ligne 34 : `"Votre marketplace camerounaise de confiance..."`
+1. **Description de la marque (Slogan)**
+   - Ligne 34 : `"Le e-commerce pour vous et par vous"`
 
 2. **Liens de navigation**
    - Lignes 42-45 : Liens du menu footer
@@ -197,10 +267,17 @@ Contient toutes les **pages principales** du site :
 - `Catalogue.tsx` - Page de catalogue de produits
 - `ProductDetail.tsx` - Page de détail d'un produit
 - `Cart.tsx` - Page du panier
+- `Checkout.tsx` - Page de finalisation de commande
+- `Payment.tsx` - Page de paiement
+- `OrderConfirmation.tsx` - Page de confirmation de commande
 - `Login.tsx` - Page de connexion
 - `Signup.tsx` - Page d'inscription (client et vendeur)
 - `VendorDashboard.tsx` - Tableau de bord vendeur
 - `VendorInscription.tsx` - Ancienne page d'inscription vendeur (peut être supprimée)
+- `TermsOfService.tsx` - Conditions d'utilisation
+- `PrivacyPolicy.tsx` - Politique de confidentialité
+- `LegalNotice.tsx` - Mentions légales
+- `FAQ.tsx` - Foire Aux Questions
 - `NotFound.tsx` - Page 404
 
 ### `/src/components/`
@@ -216,8 +293,13 @@ Contient tous les **composants réutilisables** :
 - `Header.tsx` - En-tête du site
 - `Footer.tsx` - Pied de page
 
+**`/components/`** - Autres composants :
+- `NavLink.tsx` - Composant de lien de navigation
+
 **`/components/ui/`** - Composants d'interface utilisateur :
 - Composants réutilisables (boutons, inputs, cards, etc.)
+- `CategoryCard.tsx` - Carte de catégorie réutilisable
+- `ProductCard.tsx` - Carte de produit réutilisable
 - **Ne modifiez généralement pas ces fichiers** sauf si vous voulez changer le style global
 
 ### `/src/assets/`
@@ -241,7 +323,8 @@ Contient les **définitions de types TypeScript** :
 
 ### `/src/integrations/`
 Contient les **intégrations externes** :
-- `supabase/` - Configuration Supabase (base de données)
+- `supabase/client.ts` - Client Supabase pour la connexion à la base de données
+- `supabase/types.ts` - Types TypeScript générés pour Supabase
 
 ### `/public/`
 Fichiers **statiques publics** accessibles directement :
@@ -249,12 +332,26 @@ Fichiers **statiques publics** accessibles directement :
 - `robots.txt` - Configuration pour les robots de recherche
 - `placeholder.svg` - Image placeholder
 
+### `/` (Racine du projet)
+**Fichiers de configuration racine :**
+- `index.html` - Fichier HTML principal, contient les meta tags et le titre du site
+  - **À modifier :** Titre de la page, meta description, Open Graph tags
+- `package.json` - Configuration npm, dépendances et scripts
+- `tailwind.config.ts` - Configuration Tailwind CSS
+- `vite.config.ts` - Configuration Vite (si présent)
+
+### `/src/hooks/`
+Contient les **hooks React personnalisés** :
+- `use-mobile.tsx` - Hook pour détecter si l'appareil est mobile
+- `use-toast.ts` - Hook pour gérer les notifications toast
+
 ### `/src/`
 **Fichiers racine importants :**
 - `App.tsx` - Point d'entrée principal, routes de l'application
 - `main.tsx` - Point d'entrée de l'application React
 - `index.css` - Styles globaux et thème
 - `App.css` - Styles CSS personnalisés
+- `vite-env.d.ts` - Définitions de types pour Vite (généré automatiquement)
 
 ---
 
@@ -321,6 +418,31 @@ Pour ajouter une nouvelle page :
 
 ---
 
+##  MODIFIER LES META TAGS ET SEO
+
+**Fichier :** `index.html`
+
+**Éléments à modifier :**
+
+1. **Titre de la page**
+   - Ligne 6 : `<title>YARID - Le Marché Sans Frontières | E-commerce Cameroun</title>`
+
+2. **Meta description**
+   - Ligne 7 : `content="YARID - Le e-commerce pour vous et par vous..."`
+   - Description affichée dans les résultats de recherche
+
+3. **Meta keywords**
+   - Ligne 9 : Mots-clés pour le référencement
+
+4. **Open Graph (Réseaux sociaux)**
+   - Lignes 16-19 : Titre, description et image pour le partage sur les réseaux sociaux
+   - `og:title`, `og:description`, `og:image`
+
+5. **Twitter Card**
+   - Lignes 21-23 : Configuration pour le partage sur Twitter
+
+---
+
 ##  FICHIERS DE CONFIGURATION IMPORTANTS
 
 ### Configuration Tailwind CSS
@@ -367,6 +489,13 @@ Pour ajouter une nouvelle page :
 | **Couleurs du site** | `src/index.css` |
 | **Routes/URLs** | `src/App.tsx` |
 | **Page 404** | `src/pages/NotFound.tsx` |
+| **Page Checkout** | `src/pages/Checkout.tsx` |
+| **Page Paiement** | `src/pages/Payment.tsx` |
+| **Page FAQ** | `src/pages/FAQ.tsx` |
+| **Conditions d'utilisation** | `src/pages/TermsOfService.tsx` |
+| **Politique de confidentialité** | `src/pages/PrivacyPolicy.tsx` |
+| **Mentions légales** | `src/pages/LegalNotice.tsx` |
+| **Meta tags / SEO** | `index.html` |
 
 ---
 
