@@ -66,7 +66,7 @@ const Signup = () => {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-primary p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-10" />
-        <div className="relative z-10 space-y-8">
+        <div className="relative z-10">
           <Link to="/" className="flex items-center gap-3">
             <img 
               src={yaridLogo} 
@@ -75,9 +75,9 @@ const Signup = () => {
             />
           </Link>
           
-          <div className="space-y-6">
+          <div className={`space-y-6 ${isVendorSignup ? 'mt-[6cm]' : 'mt-8'}`}>
             <h1 className="text-4xl font-bold text-white leading-tight">
-              {isVendorSignup ? 'Ouvrez votre boutique sur YARID 🚀' : 'Rejoignez la communauté YARID'}
+              {isVendorSignup ? 'Ouvrez votre boutique sur YARID' : 'Rejoignez la communauté YARID'}
             </h1>
           <p className="text-white/80 text-lg">
             {isVendorSignup 
