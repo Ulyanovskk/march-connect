@@ -4,11 +4,14 @@ import HeroBanner from '@/components/home/HeroBanner';
 import CategoriesSection from '@/components/home/CategoriesSection';
 import PopularProducts from '@/components/home/PopularProducts';
 import VendorCTA from '@/components/home/VendorCTA';
+import { useCart } from '@/contexts/CartContext';
 
 const Index = () => {
+  const { itemCount } = useCart();
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header cartItemCount={itemCount} />
       
       <main className="flex-1">
         <HeroBanner />
