@@ -41,8 +41,8 @@ const Checkout = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Header cartItemCount={itemCount} />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-4xl mx-auto w-full">
           {/* En-tête */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -59,7 +59,7 @@ const Checkout = () => {
             </Link>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Colonne gauche : résumé des articles */}
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-card rounded-2xl p-6 shadow-soft">
