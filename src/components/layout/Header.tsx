@@ -54,7 +54,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
           {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* Cart */}
-            <Link to="/panier">
+            <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative touch-target">
                 <ShoppingCart className="h-5 w-5" />
                 {cartItemCount > 0 && (
@@ -119,11 +119,11 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               Connexion / Inscription
             </Link>
             <Link
-              to="/vendeur"
+              to="/vendor/dashboard"
               className="block px-4 py-3 rounded-lg bg-secondary text-secondary-foreground transition-colors touch-target"
               onClick={() => setIsMenuOpen(false)}
             >
-              Devenir vendeur
+              Espace vendeur
             </Link>
           </nav>
         </div>

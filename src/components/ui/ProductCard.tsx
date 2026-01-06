@@ -3,6 +3,8 @@ import { ShoppingCart, Heart, MapPin, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice, getDiscount } from '@/lib/demo-data';
+import { useCart } from '@/contexts/CartContext';
+import { toast } from 'sonner';
 
 interface ProductCardProps {
   id: string;
@@ -27,8 +29,23 @@ const ProductCard = ({
   isVerified,
   stock = 1,
 }: ProductCardProps) => {
+  const { addItem } = useCart();
   const discount = getDiscount(price, originalPrice ?? null);
   const isOutOfStock = stock <= 0;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    addItem({
+      id,
+      name,
+      price,
+      originalPrice,
+      image,
+      vendorName,
+      vendorCity,
+    });
+    toast.success(`${name} ajouté au panier !`);
+  };
 
   return (
     <div className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden">
@@ -101,6 +118,7 @@ const ProductCard = ({
           className="w-full gap-2" 
           size="sm"
           disabled={isOutOfStock}
+          onClick={handleAddToCart}
         >
           <ShoppingCart className="h-4 w-4" />
           {isOutOfStock ? 'Indisponible' : 'Ajouter au panier'}
