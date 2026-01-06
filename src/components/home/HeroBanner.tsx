@@ -50,7 +50,7 @@ const HeroBanner = () => {
               variant="outline" 
               className="border-white text-white hover:bg-white/10"
             >
-              <Link to="/vendeur">
+              <Link to="/signup?vendor=true">
                 Devenir vendeur
               </Link>
             </Button>
