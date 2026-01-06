@@ -130,7 +130,7 @@ const Payment = () => {
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Colonne gauche : Formulaire de paiement */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 order-2 lg:order-1">
               <div className="bg-card rounded-2xl p-6 shadow-soft">
                 <div className="flex items-center gap-2 mb-6">
                   <Lock className="w-5 h-5 text-primary" />
@@ -393,8 +393,8 @@ const Payment = () => {
             </div>
 
             {/* Colonne droite : Récapitulatif */}
-            <div className="lg:col-span-1">
-              <div className="bg-card rounded-2xl p-6 shadow-soft sticky top-24">
+            <div className="lg:col-span-1 order-1 lg:order-2">
+              <div className="bg-card rounded-2xl p-6 shadow-soft lg:sticky top-24">
                 <h2 className="font-semibold text-lg mb-6">Récapitulatif</h2>
 
                 <div className="space-y-4 mb-6">
