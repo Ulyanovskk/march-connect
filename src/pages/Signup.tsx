@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import yaridLogo from '@/assets/yarid-logo.jpg';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -51,23 +52,24 @@ const Signup = () => {
     const { password } = formData;
     if (!password) return { score: 0, label: '', color: '' };
     if (password.length < 6) return { score: 1, label: 'Faible', color: 'bg-red-500' };
-    if (password.length < 10) return { score: 2, label: 'Moyen', color: 'bg-yarid-yellow' };
-    return { score: 3, label: 'Fort', color: 'bg-yarid-green' };
+    if (password.length < 10) return { score: 2, label: 'Moyen', color: 'bg-yellow-500' };
+    return { score: 3, label: 'Fort', color: 'bg-accent' };
   };
 
   const strength = passwordStrength();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yarid-blue/5 via-background to-yarid-orange/5 flex">
+    <div className="min-h-screen bg-muted/30 flex">
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-yarid p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-20" />
+      <div className="hidden lg:flex lg:w-1/2 gradient-primary p-12 flex-col justify-between relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-10" />
         <div className="relative z-10">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <span className="text-2xl font-black text-yarid-blue">Y</span>
-            </div>
-            <span className="text-3xl font-black text-white">YARID</span>
+            <img 
+              src={yaridLogo} 
+              alt="YARID" 
+              className="h-12 w-auto object-contain bg-white rounded-lg p-1"
+            />
           </Link>
         </div>
         
@@ -112,10 +114,11 @@ const Signup = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center">
             <Link to="/" className="inline-flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-yarid rounded-xl flex items-center justify-center">
-                <span className="text-xl font-black text-white">Y</span>
-              </div>
-              <span className="text-2xl font-black bg-gradient-yarid bg-clip-text text-transparent">YARID</span>
+              <img 
+                src={yaridLogo} 
+                alt="YARID" 
+                className="h-10 w-auto object-contain"
+              />
             </Link>
           </div>
 
@@ -247,7 +250,7 @@ const Signup = () => {
                       style={{ width: `${(strength.score / 3) * 100}%` }}
                     />
                   </div>
-                  <span className={`text-xs ${strength.score === 3 ? 'text-yarid-green' : strength.score === 2 ? 'text-yarid-yellow' : 'text-red-500'}`}>
+                  <span className={`text-xs ${strength.score === 3 ? 'text-accent' : strength.score === 2 ? 'text-yellow-500' : 'text-red-500'}`}>
                     {strength.label}
                   </span>
                 </div>

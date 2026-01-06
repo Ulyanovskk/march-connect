@@ -55,7 +55,7 @@ const VendorCTA = () => {
               <Button 
                 asChild 
                 size="lg" 
-                className="bg-white text-secondary hover:bg-white/90 font-semibold"
+                className="bg-white text-primary hover:bg-white/90 font-semibold"
               >
                 <Link to="/vendeur/inscription">
                   Créer ma boutique

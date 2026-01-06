@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        sans: ['Montserrat', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -60,12 +60,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // YARID custom colors
+        // YARID Charte graphique colors
         yarid: {
-          blue: "hsl(var(--yarid-blue))",
-          orange: "hsl(var(--yarid-orange))",
-          green: "hsl(var(--yarid-green))",
-          yellow: "hsl(var(--yarid-yellow))",
+          "blue-dark": "hsl(var(--yarid-blue-dark))",
+          "blue-light": "hsl(var(--yarid-blue-light))",
+          "blue-medium": "hsl(var(--yarid-blue-medium))",
+          "teal": "hsl(var(--yarid-teal))",
         },
       },
       borderRadius: {
