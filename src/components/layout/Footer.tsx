@@ -31,7 +31,7 @@ const Footer = () => {
               />
             </div>
             <p className="text-sm text-primary-foreground/80">
-              Votre marketplace camerounaise de confiance pour acheter et vendre des équipements électroniques.
+              Le e-commerce pour vous et par vous
             </p>
           </div>
 
