@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { demoProducts, formatPrice, getDiscount } from '@/lib/demo-data';
+import { useCart } from '@/contexts/CartContext';
+import { toast } from 'sonner';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const { addItem, itemCount } = useCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
@@ -34,7 +37,16 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
-    console.log('Added to cart:', { product, quantity });
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      originalPrice: product.original_price,
+      image: product.images[0],
+      vendorName: product.vendor.shop_name,
+      vendorCity: product.vendor.city,
+    }, quantity);
+    toast.success(`${product.name} ajouté au panier !`);
   };
 
   const handleWhatsAppContact = () => {
@@ -44,7 +56,7 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+      <Header cartItemCount={itemCount} />
       
       <main className="flex-1 container mx-auto px-4 py-6">
         {/* Breadcrumb */}
