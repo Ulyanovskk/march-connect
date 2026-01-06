@@ -162,10 +162,20 @@ const Cart = () => {
               </div>
 
               <div className="space-y-3">
+                <Link to="/checkout">
+                  <Button
+                    size="lg"
+                    className="w-full h-14 text-base font-semibold gap-2"
+                  >
+                    Continuer vers le paiement
+                  </Button>
+                </Link>
+
                 <Button 
                   onClick={handleWhatsAppOrder}
                   size="lg" 
-                  className="w-full h-14 text-base font-semibold gap-2 bg-yarid-green hover:bg-yarid-green/90"
+                  variant="outline"
+                  className="w-full h-14 text-base font-semibold gap-2 border-yarid-green text-yarid-green hover:bg-yarid-green/5"
                 >
                   <MessageCircle className="w-5 h-5" />
                   Commander via WhatsApp
