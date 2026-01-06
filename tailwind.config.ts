@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -56,6 +59,13 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        // YARID custom colors
+        yarid: {
+          blue: "hsl(var(--yarid-blue))",
+          orange: "hsl(var(--yarid-orange))",
+          green: "hsl(var(--yarid-green))",
+          yellow: "hsl(var(--yarid-yellow))",
         },
       },
       borderRadius: {
