@@ -321,7 +321,7 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## 🔧 FICHIERS DE CONFIGURATION IMPORTANTS
+##  FICHIERS DE CONFIGURATION IMPORTANTS
 
 ### Configuration Tailwind CSS
 **Fichier :** `tailwind.config.ts`
@@ -339,7 +339,7 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## 📱 MODIFIER LES INFORMATIONS DE CONTACT
+##  MODIFIER LES INFORMATIONS DE CONTACT
 
 ### Dans le Footer
 **Fichier :** `src/components/layout/Footer.tsx`
@@ -354,7 +354,7 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## 🎯 RACCOURCIS RAPIDES
+##  RACCOURCIS RAPIDES
 
 | Élément à modifier | Fichier |
 |-------------------|---------|
@@ -370,7 +370,7 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## ⚠️ CONSEILS IMPORTANTS
+##  CONSEILS IMPORTANTS
 
 1. **Sauvegardez avant de modifier** : Toujours faire une copie de sauvegarde avant de modifier un fichier important
 
@@ -384,9 +384,9 @@ Pour ajouter une nouvelle page :
 
 ---
 
-## 📞 BESOIN D'AIDE ?
+##  BESOIN D'AIDE ?
 
 Si vous avez des questions sur la modification d'un élément spécifique, consultez ce guide ou référez-vous aux commentaires dans le code source.
 
-**Bon développement ! 🚀**
+**Bon développement ! **
 
