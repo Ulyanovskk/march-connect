@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 import yaridLogo from '@/assets/yarid-logo.jpg';
 
 const Signup = () => {
+  const [searchParams] = useSearchParams();
+  const isVendorSignup = searchParams.get('vendor') === 'true';
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -17,7 +20,7 @@ const Signup = () => {
     password: '',
     confirmPassword: '',
   });
-  const [accountType, setAccountType] = useState<'client' | 'vendor'>('client');
+  const [accountType, setAccountType] = useState<'client' | 'vendor'>(isVendorSignup ? 'vendor' : 'client');
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +66,7 @@ const Signup = () => {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-primary p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-10" />
-        <div className="relative z-10">
+        <div className="relative z-10 space-y-8">
           <Link to="/" className="flex items-center gap-3">
             <img 
               src={yaridLogo} 
@@ -71,38 +74,72 @@ const Signup = () => {
               className="h-12 w-auto object-contain bg-white rounded-lg p-1"
             />
           </Link>
-        </div>
-        
-        <div className="relative z-10 space-y-6">
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            Rejoignez la communauté YARID
-          </h1>
+          
+          <div className="space-y-6">
+            <h1 className="text-4xl font-bold text-white leading-tight">
+              {isVendorSignup ? 'Ouvrez votre boutique sur YARID 🚀' : 'Rejoignez la communauté YARID'}
+            </h1>
           <p className="text-white/80 text-lg">
-            Créez votre compte et commencez à acheter ou vendre en toute sécurité.
+            {isVendorSignup 
+              ? 'Rejoignez des centaines de vendeurs camerounais et touchez des milliers de clients partout au Cameroun.'
+              : 'Créez votre compte et commencez à acheter ou vendre en toute sécurité.'
+            }
           </p>
           
           <div className="space-y-4 pt-6">
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
-              </div>
-              <span>Inscription gratuite et rapide</span>
-            </div>
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
-              </div>
-              <span>Vendeurs vérifiés et produits de qualité</span>
-            </div>
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4" />
-              </div>
-              <span>Paiement sécurisé (Mobile Money, Cash)</span>
-            </div>
+            {isVendorSignup ? (
+              <>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Inscription gratuite et sans frais de mise en place</span>
+                </div>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Commission de seulement 15% sur les ventes</span>
+                </div>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Tableau de bord complet pour gérer vos produits</span>
+                </div>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Support dédié pour les vendeurs</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Inscription gratuite et rapide</span>
+                </div>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Vendeurs vérifiés et produits de qualité</span>
+                </div>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span>Paiement sécurisé (Mobile Money, Cash)</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
-
+        </div>
+        
         <div className="relative z-10 text-white/60 text-sm">
           © 2024 YARID. Tous droits réservés.
         </div>
@@ -123,50 +160,57 @@ const Signup = () => {
           </div>
 
           <div className="text-center lg:text-left">
-            <h2 className="text-2xl font-bold text-foreground">Créer un compte</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              {isVendorSignup ? 'Créer ma boutique' : 'Créer un compte'}
+            </h2>
             <p className="text-muted-foreground mt-2">
-              Remplissez le formulaire pour vous inscrire
+              {isVendorSignup 
+                ? 'Remplissez le formulaire pour devenir vendeur sur YARID'
+                : 'Remplissez le formulaire pour vous inscrire'
+              }
             </p>
           </div>
 
-          {/* Account Type Selection */}
-          <div className="space-y-3">
-            <Label>Type de compte</Label>
-            <RadioGroup
-              value={accountType}
-              onValueChange={(value) => setAccountType(value as 'client' | 'vendor')}
-              className="grid grid-cols-2 gap-4"
-            >
-              <Label
-                htmlFor="client"
-                className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  accountType === 'client' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/50'
-                }`}
+          {/* Account Type Selection - Only show if not vendor signup */}
+          {!isVendorSignup && (
+            <div className="space-y-3">
+              <Label>Type de compte</Label>
+              <RadioGroup
+                value={accountType}
+                onValueChange={(value) => setAccountType(value as 'client' | 'vendor')}
+                className="grid grid-cols-2 gap-4"
               >
-                <RadioGroupItem value="client" id="client" />
-                <div>
-                  <span className="font-medium">Client</span>
-                  <p className="text-xs text-muted-foreground">J'achète des produits</p>
-                </div>
-              </Label>
-              <Label
-                htmlFor="vendor"
-                className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  accountType === 'vendor' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/50'
-                }`}
-              >
-                <RadioGroupItem value="vendor" id="vendor" />
-                <div>
-                  <span className="font-medium">Vendeur</span>
-                  <p className="text-xs text-muted-foreground">Je vends mes produits</p>
-                </div>
-              </Label>
-            </RadioGroup>
-          </div>
+                <Label
+                  htmlFor="client"
+                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    accountType === 'client' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <RadioGroupItem value="client" id="client" />
+                  <div>
+                    <span className="font-medium">Client</span>
+                    <p className="text-xs text-muted-foreground">J'achète des produits</p>
+                  </div>
+                </Label>
+                <Label
+                  htmlFor="vendor"
+                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    accountType === 'vendor' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <RadioGroupItem value="vendor" id="vendor" />
+                  <div>
+                    <span className="font-medium">Vendeur</span>
+                    <p className="text-xs text-muted-foreground">Je vends mes produits</p>
+                  </div>
+                </Label>
+              </RadioGroup>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -293,6 +337,7 @@ const Signup = () => {
                 <Link to="/privacy" className="text-primary hover:underline">
                   politique de confidentialité
                 </Link>
+                {isVendorSignup && '. Je comprends que YARID prélève une commission de 15% sur chaque vente.'}
               </Label>
             </div>
 
@@ -305,11 +350,11 @@ const Signup = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Création du compte...
+                  {isVendorSignup ? 'Création de la boutique...' : 'Création du compte...'}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  Créer mon compte
+                  {isVendorSignup ? 'Créer ma boutique' : 'Créer mon compte'}
                   <ArrowRight className="w-5 h-5" />
                 </span>
               )}

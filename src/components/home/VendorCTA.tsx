@@ -57,7 +57,7 @@ const VendorCTA = () => {
                 size="lg" 
                 className="bg-white text-primary hover:bg-white/90 font-semibold"
               >
-                <Link to="/vendeur/inscription">
+                <Link to="/signup?vendor=true">
                   Créer ma boutique
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
