@@ -33,7 +33,7 @@ const ProductCard = ({
   return (
     <div className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden">
       {/* Image */}
-      <Link to={`/produit/${id}`} className="block relative aspect-square overflow-hidden">
+      <Link to={`/product/${id}`} className="block relative aspect-square overflow-hidden">
         <img
           src={image}
           alt={name}
@@ -80,7 +80,7 @@ const ProductCard = ({
         )}
 
         {/* Product name */}
-        <Link to={`/produit/${id}`}>
+        <Link to={`/product/${id}`}>
           <h3 className="font-medium text-foreground line-clamp-2 mb-2 group-hover:text-primary transition-colors">
             {name}
           </h3>
