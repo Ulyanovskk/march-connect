@@ -1,22 +1,22 @@
-# 🚀 Guide de Déploiement Complet - YARID Marketplace
+#  Guide de Déploiement Complet - YARID Marketplace
 
 Ce guide vous accompagne étape par étape pour déployer votre marketplace YARID en ligne de manière professionnelle.
 
 ---
 
-## 📋 PRÉREQUIS
+##  PRÉREQUIS
 
 Avant de commencer, assurez-vous d'avoir :
 
-- ✅ Un compte **GitHub** (gratuit)
-- ✅ Un compte **Supabase** (gratuit jusqu'à 500 Mo)
-- ✅ Un compte **Vercel** ou **Netlify** (gratuit)
-- ✅ Un domaine personnalisé (optionnel, mais recommandé)
-- ✅ Git installé sur votre ordinateur
+-  Un compte **GitHub** (gratuit)
+-  Un compte **Supabase** (gratuit jusqu'à 500 Mo)
+-  Un compte **Vercel** ou **Netlify** (gratuit)
+-  Un domaine personnalisé (optionnel, mais recommandé)
+-  Git installé sur votre ordinateur
 
 ---
 
-## 📦 ÉTAPE 1 : PRÉPARATION DU PROJET
+##  ÉTAPE 1 : PRÉPARATION DU PROJET
 
 ### 1.1. Vérifier que tout fonctionne localement
 
@@ -28,15 +28,15 @@ npm install
 npm run dev
 ```
 
-✅ Vérifiez que le site s'ouvre sur `http://localhost:8080` sans erreurs
+ Vérifiez que le site s'ouvre sur `http://localhost:8080` sans erreurs
 
 ### 1.2. Vérifier les fichiers de configuration
 
 Vérifiez que ces fichiers existent :
-- ✅ `vercel.json` - Configuration pour Vercel (redirections SPA, headers de sécurité)
-- ✅ `public/_redirects` - Configuration pour Netlify (si vous utilisez Netlify)
+-  `vercel.json` - Configuration pour Vercel (redirections SPA, headers de sécurité)
+-  `public/_redirects` - Configuration pour Netlify (si vous utilisez Netlify)
 
-⚠️ **Important :** Ne commitez JAMAIS le fichier `.env.local` réel dans Git !
+ **Important :** Ne commitez JAMAIS le fichier `.env.local` réel dans Git !
 
 ### 1.3. Créer un fichier `.gitignore`
 
@@ -80,11 +80,11 @@ git branch -M main
 git push -u origin main
 ```
 
-✅ Votre code est maintenant sur GitHub
+ Votre code est maintenant sur GitHub
 
 ---
 
-## 🗄️ ÉTAPE 2 : DÉPLOIEMENT DE LA BASE DE DONNÉES (SUPABASE)
+##  ÉTAPE 2 : DÉPLOIEMENT DE LA BASE DE DONNÉES (SUPABASE)
 
 ### 2.1. Créer un compte Supabase
 
@@ -98,7 +98,7 @@ git push -u origin main
 Remplissez le formulaire :
 - **Organization** : Choisissez ou créez une organisation
 - **Name** : `yarid-marketplace` (ou le nom de votre choix)
-- **Database Password** : Créez un mot de passe fort (⚠️ Notez-le quelque part !)
+- **Database Password** : Créez un mot de passe fort ( Notez-le quelque part !)
 - **Region** : Choisissez la région la plus proche (ex: `West EU (Paris)` pour l'Europe)
 - **Pricing Plan** : Free (gratuit pour commencer)
 
@@ -113,7 +113,7 @@ Une fois le projet créé :
    - **Project URL** : `https://xxxxxxxxxxxxx.supabase.co`
    - **anon public** key : Une longue clé qui commence par `eyJ...`
 
-📝 **Copiez ces deux valeurs** - vous en aurez besoin plus tard !
+ **Copiez ces deux valeurs** - vous en aurez besoin plus tard !
 
 ### 2.4. Appliquer les migrations de base de données
 
@@ -140,9 +140,9 @@ supabase db push
 2. Ouvrez votre fichier de migration : `supabase/migrations/20260106110229_702b9a69-729e-408d-a14f-9280be02ff16.sql`
 3. Copiez tout le contenu SQL
 4. Collez-le dans l'éditeur SQL
-5. Cliquez sur **"Run"** ▶️
+5. Cliquez sur **"Run"** 
 
-✅ Votre base de données est maintenant configurée !
+ Votre base de données est maintenant configurée !
 
 ### 2.5. Configurer les politiques de sécurité (RLS)
 
@@ -173,7 +173,7 @@ WITH CHECK (
 );
 ```
 
-✅ Votre base de données est sécurisée !
+ Votre base de données est sécurisée !
 
 ---
 
@@ -188,7 +188,7 @@ VITE_SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-⚠️ **Important :** Ce fichier ne doit JAMAIS être commité dans Git !
+ **Important :** Ce fichier ne doit JAMAIS être commité dans Git !
 
 ### 3.2. Tester avec les nouvelles variables
 
@@ -197,11 +197,11 @@ VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 npm run dev
 ```
 
-✅ Vérifiez que la connexion à Supabase fonctionne (pas d'erreurs dans la console)
+ Vérifiez que la connexion à Supabase fonctionne (pas d'erreurs dans la console)
 
 ---
 
-## 🌐 ÉTAPE 4 : DÉPLOIEMENT DU FRONTEND (VERCEL)
+##  ÉTAPE 4 : DÉPLOIEMENT DU FRONTEND (VERCEL)
 
 ### 4.1. Créer un compte Vercel
 
@@ -243,13 +243,13 @@ Dans la section **"Environment Variables"** :
 2. Ajoutez :
    - **Name :** `VITE_SUPABASE_URL`
    - **Value :** `https://xxxxxxxxxxxxx.supabase.co` (votre URL Supabase)
-   - ✅ Cochez **Production**, **Preview**, et **Development**
+   -  Cochez **Production**, **Preview**, et **Development**
 3. Cliquez sur **"Add"**
 
 4. Répétez pour la deuxième variable :
    - **Name :** `VITE_SUPABASE_PUBLISHABLE_KEY`
    - **Value :** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (votre clé publique)
-   - ✅ Cochez **Production**, **Preview**, et **Development**
+   -  Cochez **Production**, **Preview**, et **Development**
 5. Cliquez sur **"Add"**
 
 ### 4.5. Déployer !
@@ -258,20 +258,20 @@ Dans la section **"Environment Variables"** :
 2. Attendez 2-3 minutes que le build se termine
 3. Une fois terminé, vous verrez : **"Congratulations! Your project has been deployed."**
 
-✅ Vous obtenez une URL comme : `https://march-connect.vercel.app`
+ Vous obtenez une URL comme : `https://march-connect.vercel.app`
 
 ### 4.6. Tester le déploiement
 
 1. Cliquez sur l'URL de votre site
 2. Vérifiez que :
-   - ✅ Le site se charge
-   - ✅ Pas d'erreurs dans la console (F12)
-   - ✅ Les images se chargent
-   - ✅ Les liens fonctionnent
+   -  Le site se charge
+   -  Pas d'erreurs dans la console (F12)
+   -  Les images se chargent
+   -  Les liens fonctionnent
 
 ---
 
-## 🔄 ÉTAPE 5 : CONFIGURATION DES DÉPLOIEMENTS AUTOMATIQUES
+##  ÉTAPE 5 : CONFIGURATION DES DÉPLOIEMENTS AUTOMATIQUES
 
 ### 5.1. Vercel déploie automatiquement
 
@@ -294,7 +294,7 @@ Dans le dashboard Vercel :
 
 ---
 
-## 🌍 ÉTAPE 6 : DOMAINE PERSONNALISÉ (OPTIONNEL MAIS RECOMMANDÉ)
+##  ÉTAPE 6 : DOMAINE PERSONNALISÉ (OPTIONNEL MAIS RECOMMANDÉ)
 
 ### 6.1. Acheter un domaine
 
@@ -336,7 +336,7 @@ Votre site sera accessible en `https://yarid.cm` (sécurisé)
 
 ---
 
-## ✅ ÉTAPE 7 : VÉRIFICATIONS POST-DÉPLOIEMENT
+##  ÉTAPE 7 : VÉRIFICATIONS POST-DÉPLOIEMENT
 
 ### 7.1. Checklist de vérification
 
@@ -366,7 +366,7 @@ Votre site sera accessible en `https://yarid.cm` (sécurisé)
 
 ---
 
-## 🛠️ ÉTAPE 8 : OPTIMISATIONS ET MAINTENANCE
+##  ÉTAPE 8 : OPTIMISATIONS ET MAINTENANCE
 
 ### 8.1. Activer la compression
 
@@ -374,7 +374,7 @@ Vercel active automatiquement la compression Gzip/Brotli. Pas besoin de configur
 
 ### 8.2. Configuration déjà en place
 
-✅ Le fichier `vercel.json` est déjà configuré avec :
+ Le fichier `vercel.json` est déjà configuré avec :
 - **Redirections SPA** : Toutes les routes pointent vers `index.html` (nécessaire pour React Router)
 - **Headers de sécurité** : Protection contre le clickjacking, XSS, etc.
 
@@ -408,7 +408,7 @@ Vous pouvez modifier `vercel.json` si vous voulez ajouter des redirections perso
 
 ---
 
-## 🚨 GESTION DES ERREURS COURANTES
+##  GESTION DES ERREURS COURANTES
 
 ### Erreur : "Failed to fetch" dans la console
 
@@ -444,7 +444,7 @@ Vous pouvez modifier `vercel.json` si vous voulez ajouter des redirections perso
 
 ---
 
-## 📊 ALTERNATIVE : DÉPLOIEMENT SUR NETLIFY
+##  ALTERNATIVE : DÉPLOIEMENT SUR NETLIFY
 
 Si vous préférez Netlify à Vercel :
 
@@ -474,23 +474,23 @@ Créez `public/_redirects` :
 /*    /index.html   200
 ```
 
-✅ Netlify fonctionne très bien aussi pour les projets Vite/React !
+ Netlify fonctionne très bien aussi pour les projets Vite/React !
 
 ---
 
-## 🎯 RÉCAPITULATIF DES ÉTAPES
+##  RÉCAPITULATIF DES ÉTAPES
 
-1. ✅ **Préparation** : Code sur GitHub
-2. ✅ **Base de données** : Projet Supabase créé et migrations appliquées
-3. ✅ **Variables** : Configurées localement et sur Vercel
-4. ✅ **Déploiement** : Site en ligne sur Vercel
-5. ✅ **Domaine** : Configuré (optionnel)
-6. ✅ **Vérification** : Tout fonctionne
-7. ✅ **Optimisation** : Headers, redirections configurées
+1.  **Préparation** : Code sur GitHub
+2.  **Base de données** : Projet Supabase créé et migrations appliquées
+3.  **Variables** : Configurées localement et sur Vercel
+4.  **Déploiement** : Site en ligne sur Vercel
+5.  **Domaine** : Configuré (optionnel)
+6.  **Vérification** : Tout fonctionne
+7.  **Optimisation** : Headers, redirections configurées
 
 ---
 
-## 📝 CHECKLIST FINALE
+##  CHECKLIST FINALE
 
 - [ ] Code sur GitHub
 - [ ] Projet Supabase créé
@@ -514,7 +514,7 @@ Créez `public/_redirects` :
 
 ---
 
-## 💡 CONSEILS FINAUX
+##  CONSEILS FINAUX
 
 1. **Sauvegardez régulièrement** : Faites des commits fréquents sur GitHub
 2. **Testez avant de déployer** : Utilisez `npm run build` localement
@@ -525,9 +525,9 @@ Créez `public/_redirects` :
 
 ---
 
-**Félicitations ! 🎉 Votre marketplace YARID est maintenant en ligne !**
+**Félicitations !  Votre marketplace YARID est maintenant en ligne !**
 
 Pour toute question ou problème, référez-vous à ce guide ou consultez la documentation officielle.
 
-**Bon lancement ! 🚀**
+**Bon lancement ! **
 
