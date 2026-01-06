@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, User, MapPin } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,6 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-card shadow-soft">
-      {/* Top bar - Delivery info */}
-      <div className="bg-primary text-primary-foreground py-1.5 px-4 text-center text-sm font-medium">
-        <div className="flex items-center justify-center gap-2">
-          <MapPin className="h-3.5 w-3.5" />
-          <span>Livraison dans tout le Cameroun 🇨🇲</span>
-        </div>
-      </div>
-
       {/* Main header */}
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
