@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, ShieldCheck, MapPin, Phone, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, ShieldCheck, MapPin, Phone, MessageCircle, CreditCard } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -188,6 +188,17 @@ const Checkout = () => {
                   >
                     <MessageCircle className="w-5 h-5" />
                     Confirmer par WhatsApp
+                  </Button>
+
+                  <Button
+                    asChild
+                    size="lg"
+                    className="w-full h-14 text-base font-semibold gap-2"
+                  >
+                    <Link to="/payment">
+                      <CreditCard className="w-5 h-5" />
+                      Payer en ligne
+                    </Link>
                   </Button>
                 </div>
 

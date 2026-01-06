@@ -13,6 +13,8 @@ import Signup from "./pages/Signup";
 import Checkout from "./pages/Checkout";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorInscription from "./pages/VendorInscription";
+import Payment from "./pages/Payment";
+import OrderConfirmation from "./pages/OrderConfirmation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/vendeur/inscription" element={<VendorInscription />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+            <Route path="/payment" element={<Payment />} />
+            <Route path="/order-confirmation" element={<OrderConfirmation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
