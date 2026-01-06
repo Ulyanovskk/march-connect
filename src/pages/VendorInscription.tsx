@@ -118,7 +118,7 @@ const VendorInscription = () => {
         </div>
         
         <div className="relative z-10 text-white/60 text-sm">
-          © 2024 YARID. Tous droits réservés.
+          © 2026 YARID. Tous droits réservés.
         </div>
       </div>
 
