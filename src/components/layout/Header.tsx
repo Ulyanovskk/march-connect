@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import yaridLogo from '@/assets/yarid-logo.jpg';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HeaderProps {
   cartItemCount?: number;
@@ -13,6 +14,27 @@ interface HeaderProps {
 const Header = ({ cartItemCount = 0 }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-card shadow-soft">
@@ -21,9 +43,9 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 shrink-0">
-            <img 
-              src={yaridLogo} 
-              alt="YARID" 
+            <img
+              src={yaridLogo}
+              alt="YARID"
               className="h-10 w-auto object-contain"
             />
           </Link>
@@ -56,13 +78,35 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               </Button>
             </Link>
 
-            {/* User */}
-            <Link to="/login" className="hidden sm:block">
-              <Button variant="outline" size="sm" className="gap-2">
-                <User className="h-4 w-4" />
-                Connexion
-              </Button>
-            </Link>
+            {/* User Actions */}
+            <div className="hidden sm:flex items-center gap-2">
+              {user ? (
+                <>
+                  <Link to={user.user_metadata?.role === 'vendor' ? "/vendor/dashboard" : "/shop"}>
+                    <Button variant="ghost" size="sm" className="gap-2 font-medium">
+                      {user.email?.split('@')[0]}
+                    </Button>
+                  </Link>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                    Quitter
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="ghost" size="sm" className="font-bold">
+                      Connexion
+                    </Button>
+                  </Link>
+                  <Link to="/signup">
+                    <Button variant="default" size="sm" className="font-bold bg-primary hover:bg-primary/90">
+                      Inscription
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </div>
 
             {/* Mobile menu toggle */}
             <Button
@@ -102,13 +146,47 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
             >
               Catalogue
             </Link>
-            <Link
-              to="/login"
-              className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Connexion / Inscription
-            </Link>
+            {user ? (
+              <>
+                <div className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  Mon Compte
+                </div>
+                <Link
+                  to={user.user_metadata?.role === 'vendor' ? "/vendor/dashboard" : "/shop"}
+                  className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Mon profil ({user.email?.split('@')[0]})
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full text-left block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target text-destructive font-bold flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Se déconnecter
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target font-bold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Connexion
+                </Link>
+                <Link
+                  to="/signup"
+                  className="block px-4 py-3 rounded-lg bg-primary text-white transition-colors touch-target font-bold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Inscription
+                </Link>
+              </>
+            )}
             <Link
               to="/vendor/dashboard"
               className="block px-4 py-3 rounded-lg bg-secondary text-secondary-foreground transition-colors touch-target"

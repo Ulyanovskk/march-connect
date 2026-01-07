@@ -23,6 +23,7 @@ import LegalNotice from "./pages/LegalNotice";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import AdminPayments from "./pages/admin/Payments";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -35,23 +36,33 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/shop" element={<Index />} />
-            <Route path="/catalogue" element={<Catalogue />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
+
+            {/* Protected Client Routes */}
+            <Route path="/shop" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/catalogue" element={<ProtectedRoute><Catalogue /></ProtectedRoute>} />
+            <Route path="/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
             <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+            <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+            <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+
+            {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+
+            {/* Protected Vendor Routes */}
             <Route path="/vendeur/inscription" element={<VendorInscription />} />
-            <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-            <Route path="/payment" element={<Payment />} />
-            <Route path="/order-confirmation" element={<OrderConfirmation />} />
+            <Route path="/vendor/dashboard" element={<ProtectedRoute requiredRole="vendor"><VendorDashboard /></ProtectedRoute>} />
+
+            {/* Static Pages */}
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/legal-notice" element={<LegalNotice />} />
             <Route path="/faq" element={<FAQ />} />
-            <Route path="/admin/payments" element={<AdminPayments />} />
+
+            {/* Protected Admin Routes */}
+            <Route path="/admin/payments" element={<ProtectedRoute requiredRole="admin"><AdminPayments /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
