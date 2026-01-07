@@ -1,1 +1,7 @@
 project_id = "andemnvsudxiraosokwd"
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.create-manual-order]
+verify_jwt = false
