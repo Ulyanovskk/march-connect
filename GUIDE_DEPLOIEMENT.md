@@ -121,8 +121,13 @@ Une fois le projet créé :
 
 ```bash
 # Installer la CLI Supabase
-npm install -g supabase
+ 1. Installer Scoop (si pas déjà installé)
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm get.scoop.sh | iex
 
+ 2. Installer Supabase CLI
+scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+scoop install supabase
 # Se connecter à votre projet Supabase
 supabase login
 

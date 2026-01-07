@@ -23,7 +23,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- Types d'utilisateurs
-CREATE TYPE IF NOT EXISTS public.app_role AS ENUM ('admin', 'client', 'vendor');
+DO $$ BEGIN
+    CREATE TYPE public.app_role AS ENUM ('admin', 'client', 'vendor');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Table: user_roles (Rôles des utilisateurs)
 -- Permet à un utilisateur d'avoir plusieurs rôles (ex: client + vendor)
@@ -153,37 +157,49 @@ CREATE TABLE IF NOT EXISTS public.product_attributes (
 -- =====================================================
 
 -- Statuts de commande
-CREATE TYPE IF NOT EXISTS public.order_status AS ENUM (
-  'pending',        -- En attente
-  'confirmed',      -- Confirmée
-  'processing',     -- En préparation
-  'ready',          -- Prête à être livrée
-  'shipped',        -- Expédiée
-  'delivered',      -- Livrée
-  'cancelled',      -- Annulée
-  'refunded'        -- Remboursée
-);
+DO $$ BEGIN
+    CREATE TYPE public.order_status AS ENUM (
+      'pending',        -- En attente
+      'confirmed',      -- Confirmée
+      'processing',     -- En préparation
+      'ready',          -- Prête à être livrée
+      'shipped',        -- Expédiée
+      'delivered',      -- Livrée
+      'cancelled',      -- Annulée
+      'refunded'        -- Remboursée
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Méthodes de paiement
 -- Mise à jour pour correspondre aux méthodes disponibles dans l'application
-CREATE TYPE IF NOT EXISTS public.payment_method AS ENUM (
-  'card',              -- Carte bancaire (Visa, Mastercard, American Express)
-  'paypal',            -- PayPal
-  'orange_money',      -- Orange Money
-  'mtn_momo',          -- MTN Mobile Money
-  'binance',           -- Binance Pay (crypto-monnaie)
-  'cash_on_delivery',  -- Paiement à la livraison
-  'bank_transfer'      -- Virement bancaire
-);
+DO $$ BEGIN
+    CREATE TYPE public.payment_method AS ENUM (
+      'card',              -- Carte bancaire (Visa, Mastercard, American Express)
+      'paypal',            -- PayPal
+      'orange_money',      -- Orange Money
+      'mtn_momo',          -- MTN Mobile Money
+      'binance',           -- Binance Pay (crypto-monnaie)
+      'cash_on_delivery',  -- Paiement à la livraison
+      'bank_transfer'      -- Virement bancaire
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Statuts de paiement
-CREATE TYPE IF NOT EXISTS public.payment_status AS ENUM (
-  'pending',
-  'processing',
-  'completed',
-  'failed',
-  'refunded'
-);
+DO $$ BEGIN
+    CREATE TYPE public.payment_status AS ENUM (
+      'pending',
+      'processing',
+      'completed',
+      'failed',
+      'refunded'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Table: addresses (Adresses de livraison)
 CREATE TABLE IF NOT EXISTS public.addresses (
@@ -330,18 +346,22 @@ CREATE TABLE IF NOT EXISTS public.vendor_reviews (
 -- =====================================================
 
 -- Types de notifications
-CREATE TYPE IF NOT EXISTS public.notification_type AS ENUM (
-  'order_placed',
-  'order_confirmed',
-  'order_shipped',
-  'order_delivered',
-  'order_cancelled',
-  'payment_received',
-  'review_received',
-  'product_approved',
-  'vendor_verified',
-  'system_announcement'
-);
+DO $$ BEGIN
+    CREATE TYPE public.notification_type AS ENUM (
+      'order_placed',
+      'order_confirmed',
+      'order_shipped',
+      'order_delivered',
+      'order_cancelled',
+      'payment_received',
+      'review_received',
+      'product_approved',
+      'vendor_verified',
+      'system_announcement'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Table: notifications (Notifications)
 CREATE TABLE IF NOT EXISTS public.notifications (
@@ -604,25 +624,25 @@ ALTER TABLE public.content_pages ENABLE ROW LEVEL SECURITY;
 -- =====================================================
 
 -- Profiles: Lecture publique, modification par propriétaire
-CREATE POLICY IF NOT EXISTS "Profiles are viewable by everyone"
+CREATE POLICY "Profiles are viewable by everyone"
   ON public.profiles FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "Users can update their own profile"
+CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY IF NOT EXISTS "Users can insert their own profile"
+CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Categories: Lecture publique
-CREATE POLICY IF NOT EXISTS "Categories are viewable by everyone"
+CREATE POLICY "Categories are viewable by everyone"
   ON public.categories FOR SELECT USING (is_active = true);
 
 -- Products: Lecture publique des produits actifs
-CREATE POLICY IF NOT EXISTS "Active products are viewable by everyone"
+CREATE POLICY "Active products are viewable by everyone"
   ON public.products FOR SELECT USING (is_active = true);
 
 -- Products: Vendeurs peuvent gérer leurs produits
-CREATE POLICY IF NOT EXISTS "Vendors can manage their own products"
+CREATE POLICY "Vendors can manage their own products"
   ON public.products FOR ALL USING (
     EXISTS (
       SELECT 1 FROM public.vendors 
@@ -632,58 +652,58 @@ CREATE POLICY IF NOT EXISTS "Vendors can manage their own products"
   );
 
 -- Vendors: Lecture publique
-CREATE POLICY IF NOT EXISTS "Vendors are viewable by everyone"
+CREATE POLICY "Vendors are viewable by everyone"
   ON public.vendors FOR SELECT USING (is_active = true);
 
 -- Vendors: Modification par propriétaire
-CREATE POLICY IF NOT EXISTS "Vendors can update their own data"
+CREATE POLICY "Vendors can update their own data"
   ON public.vendors FOR UPDATE USING (auth.uid() = user_id);
 
 -- Cart items: Utilisateur peut gérer son panier
-CREATE POLICY IF NOT EXISTS "Users can manage their own cart"
+CREATE POLICY "Users can manage their own cart"
   ON public.cart_items FOR ALL USING (auth.uid() = user_id);
 
 -- Wishlist: Utilisateur peut gérer sa liste de souhaits
-CREATE POLICY IF NOT EXISTS "Users can manage their own wishlist"
+CREATE POLICY "Users can manage their own wishlist"
   ON public.wishlist FOR ALL USING (auth.uid() = user_id);
 
 -- Orders: Utilisateur peut voir ses commandes
-CREATE POLICY IF NOT EXISTS "Users can view their own orders"
+CREATE POLICY "Users can view their own orders"
   ON public.orders FOR SELECT USING (auth.uid() = user_id);
 
 -- Orders: Utilisateur peut créer des commandes
-CREATE POLICY IF NOT EXISTS "Users can create their own orders"
+CREATE POLICY "Users can create their own orders"
   ON public.orders FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Addresses: Utilisateur peut gérer ses adresses
-CREATE POLICY IF NOT EXISTS "Users can manage their own addresses"
+CREATE POLICY "Users can manage their own addresses"
   ON public.addresses FOR ALL USING (auth.uid() = user_id);
 
 -- Notifications: Utilisateur peut voir ses notifications
-CREATE POLICY IF NOT EXISTS "Users can view their own notifications"
+CREATE POLICY "Users can view their own notifications"
   ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 
 -- Reviews: Lecture publique, création par utilisateurs authentifiés
-CREATE POLICY IF NOT EXISTS "Reviews are viewable by everyone"
+CREATE POLICY "Reviews are viewable by everyone"
   ON public.product_reviews FOR SELECT USING (is_approved = true);
 
-CREATE POLICY IF NOT EXISTS "Authenticated users can create reviews"
+CREATE POLICY "Authenticated users can create reviews"
   ON public.product_reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- FAQ Categories: Lecture publique des catégories actives
-CREATE POLICY IF NOT EXISTS "FAQ categories are viewable by everyone"
+CREATE POLICY "FAQ categories are viewable by everyone"
   ON public.faq_categories FOR SELECT USING (is_active = true);
 
 -- FAQ Items: Lecture publique des items actifs
-CREATE POLICY IF NOT EXISTS "FAQ items are viewable by everyone"
+CREATE POLICY "FAQ items are viewable by everyone"
   ON public.faq_items FOR SELECT USING (is_active = true);
 
 -- Content Pages: Lecture publique des pages publiées
-CREATE POLICY IF NOT EXISTS "Published content pages are viewable by everyone"
+CREATE POLICY "Published content pages are viewable by everyone"
   ON public.content_pages FOR SELECT USING (is_published = true);
 
 -- Content Pages: Modification par les admins uniquement
-CREATE POLICY IF NOT EXISTS "Admins can manage content pages"
+CREATE POLICY "Admins can manage content pages"
   ON public.content_pages FOR ALL USING (
     EXISTS (
       SELECT 1 FROM public.user_roles
@@ -692,7 +712,7 @@ CREATE POLICY IF NOT EXISTS "Admins can manage content pages"
   );
 
 -- FAQ: Modification par les admins uniquement
-CREATE POLICY IF NOT EXISTS "Admins can manage FAQ"
+CREATE POLICY "Admins can manage FAQ"
   ON public.faq_categories FOR ALL USING (
     EXISTS (
       SELECT 1 FROM public.user_roles
@@ -700,7 +720,7 @@ CREATE POLICY IF NOT EXISTS "Admins can manage FAQ"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Admins can manage FAQ items"
+CREATE POLICY "Admins can manage FAQ items"
   ON public.faq_items FOR ALL USING (
     EXISTS (
       SELECT 1 FROM public.user_roles
@@ -898,4 +918,5 @@ $$ LANGUAGE plpgsql;
 -- - Ajout de la table content_pages pour gérer les pages de contenu statique (Terms, Privacy, Legal)
 -- - Ajout des index et politiques RLS pour les nouvelles tables
 -- - Ajout des triggers pour updated_at sur les nouvelles tables
+
 
