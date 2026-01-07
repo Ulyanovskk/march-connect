@@ -229,24 +229,27 @@ const VendorDashboard = () => {
       setIsSubmitting(true);
       const { data, error } = await supabase
         .from('products')
-        .insert([
-          {
-            name: newProduct.name,
-            slug: generateSlug(newProduct.name),
-            price: Number(newProduct.price),
-            stock: Number(newProduct.stock) || 0,
-            category: newProduct.category,
-            description: newProduct.description,
-            image: newProduct.images[0],
-            images: newProduct.images,
-            status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock'
-          }
-        ])
+        .insert({
+          name: newProduct.name,
+          slug: generateSlug(newProduct.name),
+          price: Number(newProduct.price),
+          stock: Number(newProduct.stock) || 0,
+          category: newProduct.category,
+          description: newProduct.description,
+          image: newProduct.images[0],
+          images: newProduct.images,
+          vendor_id: userId, // Re-ajouté car TS le demande comme obligatoire
+          status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock'
+        } as any)
         .select();
 
       if (error) throw error;
 
-      setProducts([data[0], ...products]);
+      if (data && data.length > 0) {
+        setProducts([data[0], ...products]);
+      } else {
+        await fetchProducts(userId!);
+      }
       setNewProduct({ name: '', price: '', stock: '', category: '', description: '', images: [] });
       setIsAddProductOpen(false);
       toast.success('Produit ajouté avec succès !');
@@ -295,7 +298,7 @@ const VendorDashboard = () => {
           image: editProduct.images[0],
           images: editProduct.images,
           status: Number(editProduct.stock) > 0 ? 'active' : 'out_of_stock'
-        })
+        } as any)
         .eq('id', editingProduct.id);
 
       if (error) throw error;
