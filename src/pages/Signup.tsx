@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import yaridLogo from '@/assets/yarid-logo.jpg';
 
 const Signup = () => {
   const [searchParams] = useSearchParams();
   const isVendorSignup = searchParams.get('vendor') === 'true';
-  
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -31,7 +33,7 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Les mots de passe ne correspondent pas');
       return;
@@ -43,12 +45,43 @@ const Signup = () => {
     }
 
     setIsLoading(true);
-    
-    // Simulate signup
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success('Compte créé avec succès ! (simulation)');
-    setIsLoading(false);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            phone: formData.phone,
+            role: isVendorSignup ? 'vendor' : accountType,
+          },
+        },
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (data.user) {
+        toast.success('Compte créé avec succès !');
+        // If email confirmation is disabled or auto-confirmed
+        if (!data.session) {
+          toast.info('Veuillez vérifier votre email pour confirmer votre compte.', { duration: 5000 });
+        }
+
+        // Redirect to login or dashboard
+        setTimeout(() => {
+          navigate('/login');
+        }, 1500);
+      }
+    } catch (error: any) {
+      toast.error('Une erreur est survenue lors de l\'inscription');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const passwordStrength = () => {
@@ -68,78 +101,78 @@ const Signup = () => {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-10" />
         <div className="relative z-10">
           <Link to="/" className="flex items-center gap-3">
-            <img 
-              src={yaridLogo} 
-              alt="YARID" 
+            <img
+              src={yaridLogo}
+              alt="YARID"
               className="h-12 w-auto object-contain bg-white rounded-lg p-1"
             />
           </Link>
-          
+
           <div className={`space-y-6 ${isVendorSignup ? 'mt-[6cm]' : 'mt-8'}`}>
             <h1 className="text-4xl font-bold text-white leading-tight">
               {isVendorSignup ? 'Ouvrez votre boutique sur YARID' : 'Rejoignez la communauté YARID'}
             </h1>
-          <p className="text-white/80 text-lg">
-            {isVendorSignup 
-              ? 'Rejoignez des centaines de vendeurs camerounais et touchez des milliers de clients partout au Cameroun.'
-              : 'Créez votre compte et commencez à acheter ou vendre en toute sécurité.'
-            }
-          </p>
-          
-          <div className="space-y-4 pt-6">
-            {isVendorSignup ? (
-              <>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+            <p className="text-white/80 text-lg">
+              {isVendorSignup
+                ? 'Rejoignez des centaines de vendeurs camerounais et touchez des milliers de clients partout au Cameroun.'
+                : 'Créez votre compte et commencez à acheter ou vendre en toute sécurité.'
+              }
+            </p>
+
+            <div className="space-y-4 pt-6">
+              {isVendorSignup ? (
+                <>
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Inscription gratuite et sans frais de mise en place</span>
                   </div>
-                  <span>Inscription gratuite et sans frais de mise en place</span>
-                </div>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Commission de seulement 15% sur les ventes</span>
                   </div>
-                  <span>Commission de seulement 15% sur les ventes</span>
-                </div>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Tableau de bord complet pour gérer vos produits</span>
                   </div>
-                  <span>Tableau de bord complet pour gérer vos produits</span>
-                </div>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Support dédié pour les vendeurs</span>
                   </div>
-                  <span>Support dédié pour les vendeurs</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Inscription gratuite et rapide</span>
                   </div>
-                  <span>Inscription gratuite et rapide</span>
-                </div>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Vendeurs vérifiés et produits de qualité</span>
                   </div>
-                  <span>Vendeurs vérifiés et produits de qualité</span>
-                </div>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4" />
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span>Paiement sécurisé (Mobile Money, Cash)</span>
                   </div>
-                  <span>Paiement sécurisé (Mobile Money, Cash)</span>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
-        </div>
-        
+
         <div className="relative z-10 text-white/60 text-sm">
           © 2026 YARID. Tous droits réservés.
         </div>
@@ -151,9 +184,9 @@ const Signup = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center">
             <Link to="/" className="inline-flex items-center gap-2">
-              <img 
-                src={yaridLogo} 
-                alt="YARID" 
+              <img
+                src={yaridLogo}
+                alt="YARID"
                 className="h-10 w-auto object-contain"
               />
             </Link>
@@ -164,7 +197,7 @@ const Signup = () => {
               {isVendorSignup ? 'Créer ma boutique' : 'Créer un compte'}
             </h2>
             <p className="text-muted-foreground mt-2">
-              {isVendorSignup 
+              {isVendorSignup
                 ? 'Remplissez le formulaire pour devenir vendeur sur YARID'
                 : 'Remplissez le formulaire pour vous inscrire'
               }
@@ -182,11 +215,10 @@ const Signup = () => {
               >
                 <Label
                   htmlFor="client"
-                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                    accountType === 'client' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
+                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${accountType === 'client'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                    }`}
                 >
                   <RadioGroupItem value="client" id="client" />
                   <div>
@@ -196,11 +228,10 @@ const Signup = () => {
                 </Label>
                 <Label
                   htmlFor="vendor"
-                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                    accountType === 'vendor' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
+                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${accountType === 'vendor'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                    }`}
                 >
                   <RadioGroupItem value="vendor" id="vendor" />
                   <div>
@@ -289,7 +320,7 @@ const Signup = () => {
               {formData.password && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full transition-all ${strength.color}`}
                       style={{ width: `${(strength.score / 3) * 100}%` }}
                     />

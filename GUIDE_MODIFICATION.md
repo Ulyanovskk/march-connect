@@ -280,6 +280,11 @@ Contient toutes les **pages principales** du site :
 - `FAQ.tsx` - Foire Aux Questions
 - `NotFound.tsx` - Page 404
 
+### `/src/pages/admin/`
+Contient les **pages d'administration** :
+- `Payments.tsx` - Dashboard de suivi des paiements
+
+
 ### `/src/components/`
 Contient tous les **composants réutilisables** :
 
@@ -325,6 +330,10 @@ Contient les **définitions de types TypeScript** :
 Contient les **intégrations externes** :
 - `supabase/client.ts` - Client Supabase pour la connexion à la base de données
 - `supabase/types.ts` - Types TypeScript générés pour Supabase
+
+### `/supabase/functions/`
+Contient les **Edge Functions (Backend)** :
+- `stripe-webhook/index.ts` - Webhook Stripe pour gérer les mises à jour de paiement
 
 ### `/public/`
 Fichiers **statiques publics** accessibles directement :
@@ -495,6 +504,7 @@ Pour ajouter une nouvelle page :
 | **Conditions d'utilisation** | `src/pages/TermsOfService.tsx` |
 | **Politique de confidentialité** | `src/pages/PrivacyPolicy.tsx` |
 | **Mentions légales** | `src/pages/LegalNotice.tsx` |
+| **Admin Paiements** | `src/pages/admin/Payments.tsx` |
 | **Meta tags / SEO** | `index.html` |
 
 ---
