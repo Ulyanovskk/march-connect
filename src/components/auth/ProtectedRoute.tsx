@@ -7,12 +7,14 @@ import { toast } from "sonner";
 interface ProtectedRouteProps {
     children: React.ReactNode;
     requiredRole?: "client" | "vendor" | "admin";
+    allowDuringOnboarding?: boolean;
 }
 
-const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false }: ProtectedRouteProps) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(false);
     const location = useLocation();
 
     useEffect(() => {
@@ -28,20 +30,21 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
 
                 setIsAuthenticated(true);
 
-                // Strategy: First check user_metadata (fastest)
-                const roleFromMetadata = session.user.user_metadata?.role;
+                // Fast role check from metadata
+                const roleFromMetadata = session.user.user_metadata?.role || 'client';
+                setUserRole(roleFromMetadata);
 
-                if (roleFromMetadata) {
-                    setUserRole(roleFromMetadata);
-                } else {
-                    // Fallback: Check 'profiles' table
-                    const { data: profile } = await supabase
-                        .from("profiles")
-                        .select("role")
-                        .eq("id", session.user.id)
-                        .single();
+                // Check profile for onboarding status
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("role, onboarding_completed")
+                    .eq("id", session.user.id)
+                    .single();
 
-                    setUserRole((profile as any)?.role || "client");
+                if (profile) {
+                    const profileData = profile as any;
+                    setUserRole(profileData.role || roleFromMetadata);
+                    setOnboardingCompleted(!!profileData.onboarding_completed);
                 }
             } catch (error) {
                 console.error("Auth check error:", error);
@@ -66,10 +69,29 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     }
 
     if (!isAuthenticated) {
-        toast.error("Veuillez vous connecter pour accéder à cette page");
+        // If not on login/signup/landing, show toast
+        const publicPaths = ['/', '/login', '/signup', '/auth/callback', '/vendeur/inscription'];
+        if (!publicPaths.includes(location.pathname)) {
+            toast.error("Veuillez vous connecter pour accéder à cette page");
+        }
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    // Handle redirect to onboarding if NOT completed and NOT already on onboarding page
+    if (!onboardingCompleted && !allowDuringOnboarding) {
+        const onboardingPath = userRole === 'vendor' ? '/onboarding/vendor' : '/onboarding/client';
+        if (location.pathname !== onboardingPath) {
+            return <Navigate to={onboardingPath} replace />;
+        }
+    }
+
+    // Handle redirect AWAY from onboarding if ALREADY completed
+    if (onboardingCompleted && allowDuringOnboarding) {
+        const destination = userRole === 'vendor' ? '/vendor/dashboard' : '/shop';
+        return <Navigate to={destination} replace />;
+    }
+
+    // Check Role
     if (requiredRole && userRole !== requiredRole && userRole !== "admin") {
         toast.error("Accès refusé : vous n'avez pas les droits nécessaires");
         return <Navigate to="/" replace />;

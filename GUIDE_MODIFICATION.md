@@ -17,51 +17,60 @@ Ce document répertorie les changements majeurs effectués sur la plateforme Mar
 ## 2. Système d'Authentification & Rôles
 **Fichier :** `src/components/auth/ProtectedRoute.tsx`
 - **Objectif :** Sécuriser les accès aux pages sensibles (Catalogue, Dashboard, Checkout).
-- **Logique :**
-  - Vérification de la session via Supabase Auth.
-  - Contrôle du rôle via `user_metadata` ou table `profiles`.
-  - Redirection automatique vers `/login` pour les utilisateurs non connectés.
-  - Redirection vers `/` si le rôle ne correspond pas au privilège requis (ex: vendeur accédant à une page admin).
-
-**Application dans `App.tsx` :**
-Toutes les routes de produits et de gestion sont désormais enveloppées dans un `<ProtectedRoute>`.
+- **Logique de Redirection :**
+  - Utilisateur non-connecté : Accès à la Landing Page.
+  - Utilisateur connecté : Redirection immédiate vers son Onboarding (si non complété) ou vers son espace (Shop/Dashboard).
 
 ---
 
-## 3. Mise à jour du Header
+## 3. Parcours d'Onboarding
+**Fichiers :** `src/pages/onboarding/ClientOnboarding.tsx` & `VendorOnboarding.tsx`
+
+### Pour les Clients :
+- Sélection de **minimum 3 catégories** favorites.
+- Personnalisation automatique de l'expérience d'achat.
+
+### Pour les Vendeurs :
+- Configuration de l'identité commerciale : Nom de boutique, description, type de boutique (physique ou en ligne).
+- Validation obligatoire avant d'accéder aux outils de vente.
+
+---
+
+## 4. Gestion du Profil
+**Fichier :** `src/pages/Profile.tsx`
+- Accessible via le nom de l'utilisateur dans le Header.
+- Permet la modification du nom complet.
+- Pour les vendeurs : permet d'éditer les informations de la boutique à tout moment.
+
+---
+
+## 5. Mise à jour du Header
 **Fichier :** `src/components/layout/Header.tsx`
-- **Changements :**
-  - Ajout du bouton **Inscription** à côté de **Connexion**.
-  - État dynamique : Affiche le nom de l'utilisateur et un bouton **Quitter** (Déconnexion) si authentifié.
-  - Redirection intelligente vers le bon profil (Dashboard ou Shop) selon le rôle.
+- **Dynamic User Name :** Le nom cliquable redirige vers `/profile`.
+- **Auth State :** Gestion intelligente des boutons Connexion/Inscription et Déconnexion.
 
 ---
 
-## 4. Gestion Multi-Images (Produits)
-**Fichier :** `src/pages/VendorDashboard.tsx`
-- **Fonctionnement :**
-  - Système de Drag & Drop supportant jusqu'à **10 photos**.
-  - Galerie de prévisualisation avec option de suppression.
-  - Désignation automatique de la première image comme "Photo de couverture".
+## 6. Configuration Supabase (Base de données)
 
----
-
-## 5. Configuration Supabase (Base de données)
-
-### Table `products`
-Colonnes ajoutées : `image` (couverture), `images` (tableau), `slug` (auto-généré), `vendor_id` (lié à auth.users).
-
-### Table `profiles` (Recommandé)
-Pour une gestion robuste des rôles, exécutez ce SQL :
+### Table `profiles`
+Schéma recommandé pour supporter toutes les fonctionnalités :
 
 ```sql
--- Création de la table profil
 CREATE TABLE public.profiles (
     id UUID REFERENCES auth.users(id) PRIMARY KEY,
     email TEXT,
+    full_name TEXT,
     role TEXT DEFAULT 'client' CHECK (role IN ('client', 'vendor', 'admin')),
+    onboarding_completed BOOLEAN DEFAULT false,
+    favorite_categories TEXT[] DEFAULT '{}',
+    shop_name TEXT,
+    shop_description TEXT,
+    shop_category TEXT,
+    has_physical_store BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+```
 
 -- Active RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

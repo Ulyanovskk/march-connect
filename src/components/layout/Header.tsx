@@ -82,7 +82,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
             <div className="hidden sm:flex items-center gap-2">
               {user ? (
                 <>
-                  <Link to={user.user_metadata?.role === 'vendor' ? "/vendor/dashboard" : "/shop"}>
+                  <Link to="/profile">
                     <Button variant="ghost" size="sm" className="gap-2 font-medium">
                       {user.email?.split('@')[0]}
                     </Button>
@@ -152,7 +152,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
                   Mon Compte
                 </div>
                 <Link
-                  to={user.user_metadata?.role === 'vendor' ? "/vendor/dashboard" : "/shop"}
+                  to="/profile"
                   className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >

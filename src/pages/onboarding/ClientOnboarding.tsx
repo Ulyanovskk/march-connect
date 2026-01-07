@@ -27,7 +27,7 @@ const ClientOnboarding = () => {
                 .eq('id', session.user.id)
                 .single();
 
-            if (profile?.onboarding_completed) {
+            if ((profile as any)?.onboarding_completed) {
                 navigate('/shop');
             }
             setIsLoading(false);

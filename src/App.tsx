@@ -24,6 +24,9 @@ import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import AdminPayments from "./pages/admin/Payments";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import Profile from "./pages/Profile";
+import ClientOnboarding from "./pages/onboarding/ClientOnboarding";
+import VendorOnboarding from "./pages/onboarding/VendorOnboarding";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +48,13 @@ const App = () => (
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
             <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+
+            {/* Onboarding Routes */}
+            <Route path="/onboarding/client" element={<ProtectedRoute allowDuringOnboarding={true}><ClientOnboarding /></ProtectedRoute>} />
+            <Route path="/onboarding/vendor" element={<ProtectedRoute requiredRole="vendor" allowDuringOnboarding={true}><VendorOnboarding /></ProtectedRoute>} />
+
+            {/* Profile Route */}
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
             {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
