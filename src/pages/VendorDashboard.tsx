@@ -131,6 +131,17 @@ const ImageUpload = ({ value, onChange, id }: { value: string[], onChange: (val:
   );
 };
 
+// Utility to generate a safe URL slug from a string
+const generateSlug = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // Replace spaces with -
+    .replace(/[^\w-]+/g, '')  // Remove all non-word chars
+    .replace(/--+/g, '-');    // Replace multiple - with single -
+};
+
 const demoOrders = [
   { id: 'ORD-001', product: 'iPhone 15 Pro Max', customer: 'Jean M.', amount: 850000, status: 'pending', date: '2024-01-05' },
   { id: 'ORD-002', product: 'AirPods Pro', customer: 'Marie K.', amount: 165000, status: 'completed', date: '2024-01-04' },
@@ -221,13 +232,13 @@ const VendorDashboard = () => {
         .insert([
           {
             name: newProduct.name,
+            slug: generateSlug(newProduct.name),
             price: Number(newProduct.price),
             stock: Number(newProduct.stock) || 0,
             category: newProduct.category,
             description: newProduct.description,
             image: newProduct.images[0],
             images: newProduct.images,
-            vendor_id: userId,
             status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock'
           }
         ])
@@ -276,6 +287,7 @@ const VendorDashboard = () => {
         .from('products')
         .update({
           name: editProduct.name,
+          slug: generateSlug(editProduct.name),
           price: Number(editProduct.price),
           stock: Number(editProduct.stock) || 0,
           category: editProduct.category,
