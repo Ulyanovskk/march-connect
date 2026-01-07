@@ -10,6 +10,7 @@ import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AuthCallback from "./pages/AuthCallback";
 import Checkout from "./pages/Checkout";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorInscription from "./pages/VendorInscription";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/vendeur/inscription" element={<VendorInscription />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
             <Route path="/payment" element={<Payment />} />
