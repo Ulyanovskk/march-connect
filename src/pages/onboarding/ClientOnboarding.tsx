@@ -23,12 +23,23 @@ const ClientOnboarding = () => {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('onboarding_completed')
+                .select('onboarding_completed, role')
                 .eq('id', session.user.id)
                 .single();
 
-            if ((profile as any)?.onboarding_completed) {
-                navigate('/shop');
+            if (profile) {
+                const profileData = profile as any;
+                const role = profileData.role || session.user.user_metadata?.role || 'client';
+
+                if (role === 'vendor') {
+                    navigate('/onboarding/vendor');
+                    return;
+                }
+
+                if (profileData.onboarding_completed) {
+                    navigate('/shop');
+                    return;
+                }
             }
             setIsLoading(false);
         };

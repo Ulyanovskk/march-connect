@@ -33,12 +33,23 @@ const VendorOnboarding = () => {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('onboarding_completed')
+                .select('onboarding_completed, role')
                 .eq('id', session.user.id)
                 .single();
 
-            if ((profile as any)?.onboarding_completed) {
-                navigate('/vendor/dashboard');
+            if (profile) {
+                const profileData = profile as any;
+                const role = profileData.role || session.user.user_metadata?.role || 'client';
+
+                if (role !== 'vendor' && role !== 'admin') {
+                    navigate('/onboarding/client');
+                    return;
+                }
+
+                if (profileData.onboarding_completed) {
+                    navigate('/vendor/dashboard');
+                    return;
+                }
             }
             setIsLoading(false);
         };

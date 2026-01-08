@@ -88,7 +88,16 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Handle redirect to onboarding if NOT completed and NOT already on onboarding page
+    // 1. Force redirection if on WRONG onboarding page
+    if (!onboardingCompleted && allowDuringOnboarding) {
+        const correctOnboardingPath = userRole === 'vendor' ? '/onboarding/vendor' : '/onboarding/client';
+        if (location.pathname !== correctOnboardingPath) {
+            console.log(`Wrong onboarding path. User role: ${userRole}. Redirecting to ${correctOnboardingPath}`);
+            return <Navigate to={correctOnboardingPath} replace />;
+        }
+    }
+
+    // 2. Handle redirect to onboarding if NOT completed and NOT already on onboarding page
     if (!onboardingCompleted && !allowDuringOnboarding) {
         const onboardingPath = userRole === 'vendor' ? '/onboarding/vendor' : '/onboarding/client';
         if (location.pathname !== onboardingPath) {
@@ -96,16 +105,17 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
         }
     }
 
-    // Handle redirect AWAY from onboarding if ALREADY completed
+    // 3. Handle redirect AWAY from onboarding if ALREADY completed
     if (onboardingCompleted && allowDuringOnboarding) {
         const destination = userRole === 'vendor' ? '/vendor/dashboard' : '/shop';
         return <Navigate to={destination} replace />;
     }
 
-    // Check Role
+    // 4. Check Role
     if (requiredRole && userRole !== requiredRole && userRole !== "admin") {
         toast.error("Accès refusé : vous n'avez pas les droits nécessaires");
-        return <Navigate to="/" replace />;
+        const fallbackDestination = userRole === 'vendor' ? '/vendor/dashboard' : '/shop';
+        return <Navigate to={fallbackDestination} replace />;
     }
 
     return <>{children}</>;

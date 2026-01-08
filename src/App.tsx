@@ -50,7 +50,7 @@ const App = () => (
             <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
 
             {/* Onboarding Routes */}
-            <Route path="/onboarding/client" element={<ProtectedRoute allowDuringOnboarding={true}><ClientOnboarding /></ProtectedRoute>} />
+            <Route path="/onboarding/client" element={<ProtectedRoute requiredRole="client" allowDuringOnboarding={true}><ClientOnboarding /></ProtectedRoute>} />
             <Route path="/onboarding/vendor" element={<ProtectedRoute requiredRole="vendor" allowDuringOnboarding={true}><VendorOnboarding /></ProtectedRoute>} />
 
             {/* Profile Route */}

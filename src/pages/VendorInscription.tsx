@@ -31,7 +31,7 @@ const VendorInscription = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Les mots de passe ne correspondent pas');
       return;
@@ -43,17 +43,47 @@ const VendorInscription = () => {
     }
 
     setIsLoading(true);
-    
-    // Simulate signup
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast.success('Boutique créée avec succès ! Redirection...');
-    setIsLoading(false);
-    
-    // Redirect to vendor dashboard after a short delay
-    setTimeout(() => {
-      window.location.href = '/vendor/dashboard';
-    }, 1500);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: formData.fullName,
+            phone: formData.phone,
+            role: 'vendor',
+            shop_name: formData.storeName,
+            shop_description: formData.storeDescription,
+            city: formData.city,
+            address: formData.address,
+          },
+        },
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (data.user) {
+        toast.success('Compte vendeur créé avec succès !');
+        if (!data.session) {
+          toast.info('Veuillez vérifier votre email pour confirmer votre compte.', { duration: 5000 });
+        }
+
+        // Redirect to login
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast.error('Une erreur est survenue lors de l\'inscription');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const passwordStrength = () => {
@@ -73,13 +103,13 @@ const VendorInscription = () => {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200')] bg-cover bg-center opacity-10" />
         <div className="relative z-10 space-y-8">
           <Link to="/" className="flex items-center gap-3">
-            <img 
-              src={yaridLogo} 
-              alt="YARID" 
+            <img
+              src={yaridLogo}
+              alt="YARID"
               className="h-12 w-auto object-contain bg-white rounded-lg p-1"
             />
           </Link>
-          
+
           <div className="space-y-6">
             <h1 className="text-4xl font-bold text-white leading-tight">
               Ouvrez votre boutique sur YARID 🚀
@@ -87,7 +117,7 @@ const VendorInscription = () => {
             <p className="text-white/80 text-lg">
               Rejoignez des centaines de vendeurs camerounais et touchez des milliers de clients partout au Cameroun.
             </p>
-            
+
             <div className="space-y-4 pt-6">
               <div className="flex items-center gap-3 text-white">
                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
@@ -116,7 +146,7 @@ const VendorInscription = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="relative z-10 text-white/60 text-sm">
           © 2026 YARID. Tous droits réservés.
         </div>
@@ -128,9 +158,9 @@ const VendorInscription = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center">
             <Link to="/" className="inline-flex items-center gap-2">
-              <img 
-                src={yaridLogo} 
-                alt="YARID" 
+              <img
+                src={yaridLogo}
+                alt="YARID"
                 className="h-10 w-auto object-contain"
               />
             </Link>
@@ -228,7 +258,7 @@ const VendorInscription = () => {
               {formData.password && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full transition-all ${strength.color}`}
                       style={{ width: `${(strength.score / 3) * 100}%` }}
                     />
