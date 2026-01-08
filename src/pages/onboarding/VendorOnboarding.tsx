@@ -81,8 +81,8 @@ const VendorOnboarding = () => {
 
             toast.success('Votre boutique est prête ! Bienvenue cher partenaire.');
 
-            // Redirect to dashboard
-            navigate('/vendor/dashboard');
+            // Redirect to dashboard with page reload to refresh auth state
+            window.location.href = '/vendor/dashboard';
         } catch (error: any) {
             console.error('Vendor onboarding error:', error);
             toast.error('Erreur: ' + error.message);
