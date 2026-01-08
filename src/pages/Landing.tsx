@@ -11,20 +11,20 @@ const Landing = () => {
     const navigate = useNavigate();
 
     // Redirect authenticated users away from Landing
-    // useEffect(() => {
-    //     const checkAuth = async () => {
-    //         const { data: { session } } = await supabase.auth.getSession();
-    //         if (session) {
-    //             const role = session.user.user_metadata?.role || 'client';
-    //             if (role === 'vendor') {
-    //                 navigate('/vendor/dashboard');
-    //             } else {
-    //                 navigate('/shop');
-    //             }
-    //         }
-    //     };
-    //     checkAuth();
-    // }, [navigate]);
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const role = session.user.user_metadata?.role || 'client';
+                if (role === 'vendor') {
+                    navigate('/vendor/dashboard');
+                } else {
+                    navigate('/shop');
+                }
+            }
+        };
+        checkAuth();
+    }, [navigate]);
 
     return (
         <div className="min-h-screen bg-background flex flex-col">

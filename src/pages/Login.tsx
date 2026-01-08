@@ -24,17 +24,12 @@ const Login = () => {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email,
         password,
       });
 
       if (error) {
-        if (error.message === 'Invalid login credentials') {
-          toast.error('Email ou mot de passe incorrect. Avez-vous confirmé votre email ?');
-        } else {
-          toast.error('Échec de la connexion : ' + error.message);
-        }
-        console.error("Login Error Details:", error);
+        toast.error('Échec de la connexion : ' + error.message);
         return;
       }
 
