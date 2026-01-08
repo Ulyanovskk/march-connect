@@ -12,12 +12,11 @@ const PopularProducts = () => {
         .from('products')
         .select(`
           *,
-          vendor:profiles!products_vendor_id_fkey (
-            shop_name,
-            has_physical_store
+          vendor:vendors (
+            shop_name
           )
         `)
-        .eq('status', 'active')
+        .eq('is_active', true)
         .limit(8);
 
       if (error) throw error;
@@ -67,9 +66,9 @@ const PopularProducts = () => {
                 price={product.price}
                 originalPrice={product.original_price}
                 image={product.images?.[0]}
-                vendorName={(product.vendor as any)?.shop_name || 'Vendeur Yarid'}
+                vendorName={product.vendor?.shop_name || 'Vendeur Yarid'}
                 vendorCity="Cameroun"
-                isVerified={(product.vendor as any)?.has_physical_store}
+                isVerified={true}
                 stock={product.stock}
               />
             ))}

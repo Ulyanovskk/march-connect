@@ -41,30 +41,33 @@ const Catalogue = () => {
   const { data: products, isLoading } = useQuery({
     queryKey: ['products', selectedCategory, selectedCities.join(','), priceRange, searchQuery],
     queryFn: async () => {
-      // Essai avec une requête plus simple
-      const { data, error } = await (supabase as any)
+      console.log('Fetching products...');
+      
+      // Requête simple et directe
+      const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          vendor:vendors (shop_name, shop_city)
-        `)
+        .select('*')
         .eq('is_active', true)
-        .limit(20);
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) {
-        console.error('Products query error:', error);
+        console.error('Products fetch error:', error);
         throw error;
       }
 
-      console.log('Raw products data:', data);
-      
-      // Filtrer localement par ville si nécessaire
-      let result = data || [];
-      if (selectedCities.length > 0) {
-        result = result.filter((p: any) => selectedCities.includes(p.vendor?.shop_city));
+      console.log(`Found ${data?.length || 0} products`);
+      if (data && data.length > 0) {
+        console.log('First product sample:', {
+          id: data[0].id,
+          name: data[0].name,
+          price: data[0].price,
+          stock: data[0].stock,
+          images: data[0].images?.length || 0
+        });
       }
 
-      return result;
+      return data || [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes cache
     gcTime: 1000 * 60 * 30, // 30 minutes in memory
@@ -192,7 +195,6 @@ const Catalogue = () => {
       <Header />
 
       <main className="flex-1 bg-muted/20">
-        <TestProducts /> {/* Debug component - remove later */}
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
