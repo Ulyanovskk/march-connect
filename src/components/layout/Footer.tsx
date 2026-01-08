@@ -31,7 +31,7 @@ const Footer = () => {
               />
             </div>
             <p className="text-sm text-primary-foreground/80">
-              Le e-commerce pour vous et par vous
+              Le e-commerce par vous et pour vous
             </p>
           </div>
 
