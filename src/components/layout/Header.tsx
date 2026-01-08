@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import yaridLogo from '@/assets/yarid-logo.jpg';
 import { supabase } from '@/integrations/supabase/client';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface HeaderProps {
   cartItemCount?: number;
 }
 
 const Header = ({ cartItemCount = 0 }: HeaderProps) => {
-  const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -59,7 +56,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder={t('common.searchPlaceholder')}
+                placeholder="Rechercher un produit..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 h-11 w-full bg-muted/50 border-0 focus-visible:ring-primary"
@@ -69,9 +66,6 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {/* Language Switcher */}
-            <LanguageSwitcher />
-
             {/* Cart */}
             <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative touch-target">
@@ -95,19 +89,19 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
                   </Link>
                   <Button variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
                     <LogOut className="h-4 w-4" />
-                    {t('common.logout')}
+                    Quitter
                   </Button>
                 </>
               ) : (
                 <>
                   <Link to="/login">
                     <Button variant="ghost" size="sm" className="font-bold">
-                      {t('common.login')}
+                      Connexion
                     </Button>
                   </Link>
                   <Link to="/signup">
                     <Button variant="default" size="sm" className="font-bold bg-primary hover:bg-primary/90">
-                      {t('common.signup')}
+                      Inscription
                     </Button>
                   </Link>
                 </>
@@ -150,19 +144,19 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target"
               onClick={() => setIsMenuOpen(false)}
             >
-              {t('common.catalogue')}
+              Catalogue
             </Link>
             {user ? (
               <>
                 <div className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                  {t('common.profile')}
+                  Mon Compte
                 </div>
                 <Link
                   to="/profile"
                   className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {t('common.profile')} ({user.email?.split('@')[0]})
+                  Mon profil ({user.email?.split('@')[0]})
                 </Link>
                 <button
                   onClick={() => {
@@ -172,7 +166,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
                   className="w-full text-left block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target text-destructive font-bold flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
-                  {t('common.logout')}
+                  Se déconnecter
                 </button>
               </>
             ) : (
@@ -182,14 +176,14 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
                   className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target font-bold"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {t('common.login')}
+                  Connexion
                 </Link>
                 <Link
                   to="/signup"
                   className="block px-4 py-3 rounded-lg bg-primary text-white transition-colors touch-target font-bold"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {t('common.signup')}
+                  Inscription
                 </Link>
               </>
             )}
@@ -198,13 +192,8 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               className="block px-4 py-3 rounded-lg bg-secondary text-secondary-foreground transition-colors touch-target"
               onClick={() => setIsMenuOpen(false)}
             >
-              {t('vendor.dashboard')}
+              Espace vendeur
             </Link>
-            
-            {/* Mobile Language Switcher */}
-            <div className="px-4 py-3">
-              <LanguageSwitcher variant="minimal" />
-            </div>
           </nav>
         </div>
       )}
