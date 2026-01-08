@@ -226,6 +226,25 @@ const VendorDashboard = () => {
     }
   };
 
+  const handleValidatePayment = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'paid',
+          status: 'processing' // On passe en préparation après paiement
+        } as any)
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.success('Paiement confirmé ! La commande est passée en préparation.');
+      if (userId) fetchOrders(userId);
+    } catch (error: any) {
+      toast.error('Erreur lors de la validation: ' + error.message);
+    }
+  };
+
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) {
       toast.error('Veuillez remplir tous les champs obligatoires');
@@ -365,7 +384,7 @@ const VendorDashboard = () => {
 
   // Real stats calculation
   const stats = {
-    totalRevenue: orders.reduce((acc, order) => acc + (order.total || 0), 0),
+    totalRevenue: orders.reduce((acc, order) => acc + (Number(order.total_amount || order.total || 0)), 0),
     totalOrders: orders.length,
     totalViews: products.reduce((acc, product) => acc + (product.views_count || 0), 0),
     activeProducts: products.filter(p => p.status === 'active').length,
@@ -391,7 +410,9 @@ const VendorDashboard = () => {
               <CheckCircle className="w-3.5 h-3.5" />
               Boutique Active
             </Badge>
-            <Badge variant="secondary">Liaison Supabase Connectée</Badge>
+            <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100">
+              Vendeur Vérifié
+            </Badge>
           </div>
         </div>
 
@@ -725,6 +746,7 @@ const VendorDashboard = () => {
                           <th className="px-4 py-3 text-left font-semibold">Client</th>
                           <th className="px-4 py-3 text-left font-semibold">Montant</th>
                           <th className="px-4 py-3 text-left font-semibold">Statut</th>
+                          <th className="px-4 py-3 text-center font-semibold">Actions</th>
                           <th className="px-4 py-3 text-right font-semibold">Date</th>
                         </tr>
                       </thead>
@@ -747,6 +769,23 @@ const VendorDashboard = () => {
                             </td>
                             <td className="px-4 py-4">
                               {getStatusBadge(order.payment_status || order.status)}
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              {order.payment_status === 'pending_verification' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-[10px] bg-yarid-green/10 text-yarid-green border-yarid-green/20 hover:bg-yarid-green hover:text-white"
+                                  onClick={() => handleValidatePayment(order.id)}
+                                >
+                                  Confirmer paiement
+                                </Button>
+                              )}
+                              {order.payment_status === 'paid' && (
+                                <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> Payé
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-4 text-right text-muted-foreground text-xs">
                               {new Date(order.created_at).toLocaleDateString()}
