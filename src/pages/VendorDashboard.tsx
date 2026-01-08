@@ -3,8 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Package, Plus, Edit, Trash2, Eye, TrendingUp, ShoppingCart,
   DollarSign, Users, BarChart3, Settings, LogOut, Store,
-  CheckCircle, XCircle, Clock, Image as ImageIcon, Upload, Loader2
+  CheckCircle, XCircle, Clock, Image as ImageIcon, Upload, Loader2,
+  PieChart as PieChartIcon, TrendingDown, Calendar
 } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar, Legend
+} from 'recharts';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -17,6 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatPrice, demoCategories } from '@/lib/demo-data';
+import { format, subDays } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -396,6 +403,42 @@ const VendorDashboard = () => {
     activeProducts: products.filter(p => p.status === 'active').length,
   };
 
+  // Simulated data for charts
+  const salesHistory = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    const dayName = format(date, 'EEE', { locale: fr });
+
+    const daySales = orders
+      .filter(order => {
+        const orderDate = new Date(order.created_at);
+        return format(orderDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+      })
+      .reduce((sum, order) => sum + (Number(order.total_amount || order.total || 0)), 0);
+
+    return { name: dayName, sales: daySales };
+  });
+
+  const categoryData = products.reduce((acc: any[], product) => {
+    const cat = product.category || 'Standard';
+    const existing = acc.find(item => item.name === cat);
+    if (existing) {
+      existing.value += 1;
+    } else {
+      acc.push({ name: cat, value: 1 });
+    }
+    return acc;
+  }, []);
+
+  const productPerformance = products
+    .slice(0, 5)
+    .map(p => ({
+      name: p.name.length > 12 ? p.name.substring(0, 10) + '...' : p.name,
+      views: p.views_count || p.views || 0,
+      orders: p.sales_count || 0
+    }));
+
+  const COLORS = ['#D97706', '#2563EB', '#10B981', '#7C3AED', '#F43F5E'];
+
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       <Header />
@@ -491,6 +534,10 @@ const VendorDashboard = () => {
             <TabsTrigger value="orders" className="gap-2">
               <ShoppingCart className="w-4 h-4" />
               Commandes
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytique
             </TabsTrigger>
           </TabsList>
 
@@ -728,6 +775,7 @@ const VendorDashboard = () => {
 
           {/* Orders Tab */}
           <TabsContent value="orders">
+            {/* Existing Orders Table Content */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Commandes de ma boutique ({orders.length})</CardTitle>
@@ -802,6 +850,145 @@ const VendorDashboard = () => {
                     </table>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Sales Chart */}
+              <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden bg-white">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-lg font-black">Chiffre d'Affaires</CardTitle>
+                      <p className="text-xs text-muted-foreground">Ventes des 7 derniers jours</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 pt-4">
+                  <div className="h-[250px] w-full pr-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={salesHistory}>
+                        <defs>
+                          <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#D97706" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#D97706" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }}
+                          dy={10}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }}
+                          tickFormatter={(value) => `${value / 1000}k`}
+                        />
+                        <Tooltip
+                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="sales"
+                          stroke="#D97706"
+                          strokeWidth={4}
+                          fillOpacity={1}
+                          fill="url(#colorSales)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Category Distribution */}
+              <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden bg-white">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-lg font-black">Répartition Stock</CardTitle>
+                      <p className="text-xs text-muted-foreground">Proportion par catégorie</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                      <PieChartIcon className="w-5 h-5 text-blue-600" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px] w-full">
+                    {categoryData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={categoryData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={8}
+                            dataKey="value"
+                          >
+                            {categoryData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={10} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Legend verticalAlign="bottom" iconType="circle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground italic text-sm">
+                        <ImageIcon className="w-8 h-8 opacity-20" />
+                        Aucune donnée disponible
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Performance Bar Chart */}
+            <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden bg-white">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-lg font-black">Performance Produits</CardTitle>
+                    <p className="text-xs text-muted-foreground">Vues vs Commandes (Simulé)</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={productPerformance}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} />
+                      <Tooltip
+                        cursor={{ fill: '#F1F5F9' }}
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend />
+                      <Bar dataKey="views" name="Vues" fill="#D97706" radius={[6, 6, 0, 0]} barSize={30} />
+                      <Bar dataKey="orders" name="Ventes" fill="#2563EB" radius={[6, 6, 0, 0]} barSize={30} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
