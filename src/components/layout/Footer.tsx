@@ -40,8 +40,7 @@ const Footer = () => {
             <h4 className="font-semibold mb-4 text-secondary">Navigation</h4>
             <ul className="space-y-2 text-sm text-primary-foreground/80">
               <li><Link to="/catalogue" className="hover:text-secondary transition-colors">Catalogue</Link></li>
-              <li><Link to="/categories" className="hover:text-secondary transition-colors">Catégories</Link></li>
-              <li><Link to="/vendeur" className="hover:text-secondary transition-colors">Devenir vendeur</Link></li>
+              <li><Link to="/vendeur/inscription" className="hover:text-secondary transition-colors">Devenir vendeur</Link></li>
               <li><Link to="/faq" className="hover:text-secondary transition-colors">FAQ</Link></li>
             </ul>
           </div>

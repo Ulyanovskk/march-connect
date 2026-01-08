@@ -937,9 +937,10 @@ const VendorDashboard = () => {
                             outerRadius={80}
                             paddingAngle={8}
                             dataKey="value"
+                            cornerRadius={10}
                           >
                             {categoryData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={10} />
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
                           <Tooltip
