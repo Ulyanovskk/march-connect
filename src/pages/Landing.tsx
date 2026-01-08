@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { ShoppingBag, Store, ArrowRight, CheckCircle2, ShieldCheck, Zap, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +9,22 @@ import Footer from '@/components/layout/Footer';
 
 const Landing = () => {
     const navigate = useNavigate();
+
+    // Redirect authenticated users away from Landing
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const role = session.user.user_metadata?.role || 'client';
+                if (role === 'vendor') {
+                    navigate('/vendor/dashboard');
+                } else {
+                    navigate('/shop');
+                }
+            }
+        };
+        checkAuth();
+    }, [navigate]);
 
     return (
         <div className="min-h-screen bg-background flex flex-col">

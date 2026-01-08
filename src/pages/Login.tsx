@@ -44,7 +44,7 @@ const Login = () => {
         } else if (role === 'vendor') {
           navigate('/vendor/dashboard');
         } else {
-          navigate('/');
+          navigate('/shop');
         }
       }
     } catch (error: any) {

@@ -55,11 +55,12 @@ const ClientOnboarding = () => {
             const { data: { session } } = await supabase.auth.getSession();
             const { error } = await supabase
                 .from('profiles')
-                .update({
+                .upsert({
+                    id: session?.user.id,
+                    email: session?.user.email,
                     favorite_categories: selectedCategories,
                     onboarding_completed: true
-                } as any)
-                .eq('id', session?.user.id);
+                } as any);
 
             if (error) throw error;
 

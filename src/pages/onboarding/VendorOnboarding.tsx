@@ -58,14 +58,15 @@ const VendorOnboarding = () => {
             const { data: { session } } = await supabase.auth.getSession();
             const { error } = await supabase
                 .from('profiles')
-                .update({
+                .upsert({
+                    id: session?.user.id,
+                    email: session?.user.email,
                     shop_name: formData.shop_name,
                     shop_description: formData.shop_description,
                     has_physical_store: formData.has_physical_store === 'yes',
                     shop_category: formData.shop_category,
                     onboarding_completed: true
-                } as any)
-                .eq('id', session?.user.id);
+                } as any);
 
             if (error) throw error;
 
