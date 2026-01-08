@@ -137,32 +137,69 @@ const Payment = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-manual-order', {
-        body: {
-          items: items.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.image
-          })),
-          customerInfo,
-          paymentMethod,
-          paymentReference: transactionRef
-        }
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user.id || null;
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Récupérer le vendor_id du premier article pour lier la commande
+      const { data: product } = await supabase
+        .from('products')
+        .select('vendor_id')
+        .eq('id', items[0].id)
+        .single();
 
-      if (data?.success) {
-        toast.success('Commande créée ! Votre paiement sera vérifié sous 24h.');
-        clearCart();
-        navigate(`/order-confirmation?order_id=${data.orderId}&status=pending`);
+      const vendorId = product?.vendor_id || null;
+
+      // 1. Créer la commande principale
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: userId,
+          vendor_id: vendorId,
+          status: 'pending',
+          payment_method: paymentMethod,
+          payment_status: 'pending_verification',
+          payment_reference: transactionRef.trim(),
+          subtotal: total,
+          total: total,
+          total_amount: total,
+          currency: 'XAF',
+          customer_name: customerInfo.name,
+          customer_email: customerInfo.email || session?.user.email || null,
+          customer_phone: customerInfo.phone,
+          delivery_address: customerInfo.address,
+          delivery_city: customerInfo.city,
+          items: items as any
+        } as any)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // 2. Créer les détails des articles (order_items)
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        product_name: item.name,
+        product_image: item.image,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.warn("Erreur order_items (non bloquante):", itemsError);
       }
-    } catch (error) {
+
+      toast.success('Commande créée ! Votre paiement sera vérifié sous 24h.');
+      clearCart();
+      navigate(`/order-confirmation?order_id=${order.id}&status=pending`);
+    } catch (error: any) {
       console.error('Manual payment error:', error);
-      toast.error('Erreur lors de la création de la commande. Veuillez réessayer.');
+      toast.error(`Erreur : ${error.message || 'Impossible de créer la commande'}`);
     } finally {
       setIsLoading(false);
     }
@@ -216,9 +253,9 @@ const Payment = () => {
                 {step === 'info' ? 'Renseignez vos informations de livraison' : 'Choisissez votre méthode de paiement'}
               </p>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="gap-2"
               onClick={() => step === 'payment' ? setStep('info') : navigate('/checkout')}
             >
@@ -348,11 +385,10 @@ const Payment = () => {
                         {/* Carte bancaire */}
                         <Label
                           htmlFor="card"
-                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                            paymentMethod === 'card'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'card'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                         >
                           <RadioGroupItem value="card" id="card" />
                           <CreditCard className="w-5 h-5 text-primary" />
@@ -365,11 +401,10 @@ const Payment = () => {
                         {/* PayPal */}
                         <Label
                           htmlFor="paypal"
-                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                            paymentMethod === 'paypal'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'paypal'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                         >
                           <RadioGroupItem value="paypal" id="paypal" />
                           <Wallet className="w-5 h-5 text-blue-600" />
@@ -382,11 +417,10 @@ const Payment = () => {
                         {/* Orange Money */}
                         <Label
                           htmlFor="orange_money"
-                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                            paymentMethod === 'orange_money'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'orange_money'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                         >
                           <RadioGroupItem value="orange_money" id="orange_money" />
                           <Smartphone className="w-5 h-5 text-orange-600" />
@@ -399,11 +433,10 @@ const Payment = () => {
                         {/* MTN Mobile Money */}
                         <Label
                           htmlFor="mtn_momo"
-                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                            paymentMethod === 'mtn_momo'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'mtn_momo'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                         >
                           <RadioGroupItem value="mtn_momo" id="mtn_momo" />
                           <Smartphone className="w-5 h-5 text-yellow-600" />
@@ -416,11 +449,10 @@ const Payment = () => {
                         {/* Binance (Crypto) */}
                         <Label
                           htmlFor="binance"
-                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                            paymentMethod === 'binance'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'binance'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                         >
                           <RadioGroupItem value="binance" id="binance" />
                           <Coins className="w-5 h-5 text-yellow-500" />
@@ -458,7 +490,7 @@ const Payment = () => {
                               </ol>
                             </AlertDescription>
                           </Alert>
-                          
+
                           <div className="p-4 bg-orange-100 rounded-xl space-y-2">
                             <p className="text-sm font-medium text-orange-800">Numéro Orange Money :</p>
                             <div className="flex items-center justify-between">
@@ -502,7 +534,7 @@ const Payment = () => {
                               </ol>
                             </AlertDescription>
                           </Alert>
-                          
+
                           <div className="p-4 bg-yellow-100 rounded-xl space-y-2">
                             <p className="text-sm font-medium text-yellow-800">Numéro MTN MoMo :</p>
                             <div className="flex items-center justify-between">
@@ -547,7 +579,7 @@ const Payment = () => {
                               </ol>
                             </AlertDescription>
                           </Alert>
-                          
+
                           <div className="p-4 bg-amber-100 rounded-xl space-y-3">
                             <div>
                               <p className="text-sm font-medium text-amber-800">Adresse USDT (TRC20) :</p>
@@ -609,7 +641,7 @@ const Payment = () => {
                       ) : (
                         <span className="flex items-center gap-2">
                           <ShieldCheck className="w-5 h-5" />
-                          {(paymentMethod === 'card' || paymentMethod === 'paypal') 
+                          {(paymentMethod === 'card' || paymentMethod === 'paypal')
                             ? `Payer ${formatPrice(total)}`
                             : 'Confirmer ma commande'
                           }

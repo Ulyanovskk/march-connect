@@ -142,14 +142,10 @@ const generateSlug = (text: string) => {
     .replace(/--+/g, '-');    // Replace multiple - with single -
 };
 
-const demoOrders = [
-  { id: 'ORD-001', product: 'iPhone 15 Pro Max', customer: 'Jean M.', amount: 850000, status: 'pending', date: '2024-01-05' },
-  { id: 'ORD-002', product: 'AirPods Pro', customer: 'Marie K.', amount: 165000, status: 'completed', date: '2024-01-04' },
-  { id: 'ORD-003', product: 'iPhone 15 Pro Max', customer: 'Paul N.', amount: 850000, status: 'completed', date: '2024-01-03' },
-];
 
 const VendorDashboard = () => {
   const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -177,7 +173,7 @@ const VendorDashboard = () => {
     images: [] as string[],
   });
 
-  // Check auth and fetch products
+  // Check auth and fetch data
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -190,6 +186,7 @@ const VendorDashboard = () => {
 
       setUserId(session.user.id);
       fetchProducts(session.user.id);
+      fetchOrders(session.user.id);
     };
 
     checkAuthAndFetch();
@@ -211,6 +208,21 @@ const VendorDashboard = () => {
       toast.error('Erreur lors du chargement des produits');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchOrders = async (vendorId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error: any) {
+      console.error('Error fetching orders:', error.message);
     }
   };
 
@@ -340,19 +352,23 @@ const VendorDashboard = () => {
         return <Badge variant="destructive">Rupture</Badge>;
       case 'pending':
         return <Badge className="bg-yarid-yellow/10 text-yarid-yellow border-0">En attente</Badge>;
+      case 'pending_verification':
+        return <Badge className="bg-orange-100 text-orange-600 border-0 text-[10px]">Paiement à vérifier</Badge>;
       case 'completed':
-        return <Badge className="bg-yarid-green/10 text-yarid-green border-0">Complété</Badge>;
+        return <Badge className="bg-yarid-green/10 text-yarid-green border-0 text-[10px]">Livré</Badge>;
+      case 'paid':
+        return <Badge className="bg-blue-100 text-blue-600 border-0 text-[10px]">Payé</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
     }
   };
 
-  // Demo stats
+  // Real stats calculation
   const stats = {
-    totalRevenue: 2865000,
-    totalOrders: 23,
-    totalViews: 479,
-    conversionRate: 4.8,
+    totalRevenue: orders.reduce((acc, order) => acc + (order.total || 0), 0),
+    totalOrders: orders.length,
+    totalViews: products.reduce((acc, product) => acc + (product.views_count || 0), 0),
+    activeProducts: products.filter(p => p.status === 'active').length,
   };
 
   return (
@@ -427,11 +443,11 @@ const VendorDashboard = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-yarid-green/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-yarid-green" />
+                  <Package className="w-5 h-5 text-yarid-green" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Conversion</p>
-                  <p className="font-bold text-lg">{stats.conversionRate}%</p>
+                  <p className="text-xs text-muted-foreground">Produits actifs</p>
+                  <p className="font-bold text-lg">{stats.activeProducts}</p>
                 </div>
               </div>
             </CardContent>
@@ -683,17 +699,64 @@ const VendorDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Orders Tab Placeholder */}
+          {/* Orders Tab */}
           <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Commandes réelles</CardTitle>
+                <CardTitle className="text-lg">Commandes de ma boutique ({orders.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12">
-                  <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Les commandes apparaîtront ici dès que des clients achèteront vos produits.</p>
-                </div>
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    <p className="text-muted-foreground">Chargement des commandes...</p>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Pas encore de commandes pour vos produits.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 rounded-lg">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold">Commande</th>
+                          <th className="px-4 py-3 text-left font-semibold">Client</th>
+                          <th className="px-4 py-3 text-left font-semibold">Montant</th>
+                          <th className="px-4 py-3 text-left font-semibold">Statut</th>
+                          <th className="px-4 py-3 text-right font-semibold">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {orders.map((order) => (
+                          <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-4">
+                              <span className="font-mono font-medium text-xs text-primary">
+                                {order.order_number || order.id.substring(0, 8)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex flex-col">
+                                <span className="font-medium">{order.customer_name}</span>
+                                <span className="text-[10px] text-muted-foreground">{order.customer_phone}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 font-semibold">
+                              {formatPrice(order.total)}
+                            </td>
+                            <td className="px-4 py-4">
+                              {getStatusBadge(order.payment_status || order.status)}
+                            </td>
+                            <td className="px-4 py-4 text-right text-muted-foreground text-xs">
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

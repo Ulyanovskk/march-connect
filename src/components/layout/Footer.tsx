@@ -24,9 +24,9 @@ const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <img 
-                src={yaridLogo} 
-                alt="YARID" 
+              <img
+                src={yaridLogo}
+                alt="YARID"
                 className="h-12 w-auto object-contain bg-white rounded-lg p-1"
               />
             </div>
@@ -73,7 +73,7 @@ const Footer = () => {
                 <span>Douala, Cameroun</span>
               </li>
             </ul>
-            <Button 
+            <Button
               asChild
               className="mt-4 w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground border-0"
             >
@@ -85,26 +85,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Payment methods */}
-        <div className="mt-12 pt-8 border-t border-primary-foreground/20">
-          <div className="flex flex-wrap items-center justify-center gap-4 mb-6">
-            <div className="flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 rounded-lg">
-              <div className="w-8 h-8 rounded bg-[#FF6600] flex items-center justify-center">
-                <span className="text-white text-xs font-bold">OM</span>
-              </div>
-              <span className="text-sm">Orange Money</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 rounded-lg">
-              <div className="w-8 h-8 rounded bg-[#FFCC00] flex items-center justify-center">
-                <span className="text-black text-xs font-bold">MTN</span>
-              </div>
-              <span className="text-sm">MTN MoMo</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 rounded-lg">
-              <span className="text-sm">💵 Paiement à la livraison</span>
-            </div>
-          </div>
-        </div>
 
         {/* Copyright */}
         <div className="text-center text-sm text-primary-foreground/70">
