@@ -26,18 +26,20 @@ interface ManualOrderRequest {
   paymentReference: string; // Transaction ID entered by user
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
 
   try {
     const { items, customerInfo, paymentMethod, paymentReference }: ManualOrderRequest = await req.json();
+
+    console.log("Creating manual order for:", customerInfo.name);
 
     if (!items || items.length === 0) {
       throw new Error("Aucun article dans le panier");
@@ -61,18 +63,33 @@ serve(async (req) => {
       }
     }
 
-    // Calculate total
+    // Calculate total and get vendor_id (from first item)
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const total = subtotal;
 
-    // Create order with pending_verification status
+    // In this simplified version, we take the vendor_id of the first product
+    // A more complex system would handle orders per vendor or sub-orders
+    let vendorId = null;
+    try {
+      const { data: product } = await supabaseClient
+        .from('products')
+        .select('vendor_id')
+        .eq('id', items[0].id)
+        .single();
+      vendorId = product?.vendor_id;
+    } catch (e) {
+      console.warn("Could not fetch vendor_id:", e);
+    }
+
+    // Create order
     const { data: order, error: orderError } = await supabaseClient
       .from('orders')
       .insert({
         user_id: userId,
+        vendor_id: vendorId,
         status: 'pending',
         payment_method: paymentMethod,
-        payment_status: 'pending_verification', // Needs manual verification
+        payment_status: 'pending_verification',
         payment_reference: paymentReference.trim(),
         subtotal,
         total,
@@ -80,58 +97,54 @@ serve(async (req) => {
         customer_name: customerInfo.name,
         customer_email: userEmail,
         customer_phone: customerInfo.phone,
-        customer_whatsapp: customerInfo.whatsapp,
+        customer_whatsapp: customerInfo.whatsapp || null,
         delivery_address: customerInfo.address,
         delivery_city: customerInfo.city,
-        items: items.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image
-        }))
+        items: items // Keep the JSON version for convenience
       })
       .select()
       .single();
 
     if (orderError) {
       console.error("Order creation error:", orderError);
-      throw new Error("Erreur lors de la création de la commande");
+      throw new Error(`Erreur base de données: ${orderError.message}`);
     }
 
-    // Get payment info based on method
-    let paymentInfo = {};
-    if (paymentMethod === 'orange_money') {
-      paymentInfo = {
-        method: 'Orange Money',
-        verificationMessage: 'Votre paiement sera vérifié sous 24h. Vous recevrez une confirmation par SMS/WhatsApp.'
-      };
-    } else if (paymentMethod === 'mtn_momo') {
-      paymentInfo = {
-        method: 'MTN Mobile Money',
-        verificationMessage: 'Votre paiement sera vérifié sous 24h. Vous recevrez une confirmation par SMS/WhatsApp.'
-      };
-    } else if (paymentMethod === 'binance') {
-      paymentInfo = {
-        method: 'Binance',
-        verificationMessage: 'Votre paiement crypto sera vérifié sous 24h. Vous recevrez une confirmation par email/WhatsApp.'
-      };
+    // Also populate order_items table for better relational integrity
+    const orderItems = items.map(item => ({
+      order_id: order.id,
+      product_id: item.id,
+      product_name: item.name,
+      product_image: item.image,
+      quantity: item.quantity,
+      unit_price: item.price,
+      total_price: item.price * item.quantity
+    }));
+
+    const { error: itemsError } = await supabaseClient
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) {
+      console.warn("Warning: Could not create order items:", itemsError);
+      // We don't throw here to not block the order if main insert worked
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       orderId: order.id,
-      paymentInfo
+      message: "Commande créée avec succès"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     console.error("Manual order error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : "Une erreur est survenue"
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 400, // Changed to 400 to be better caught by frontend
     });
   }
 });

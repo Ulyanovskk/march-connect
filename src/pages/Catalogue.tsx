@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { demoCategories, formatPrice } from '@/lib/demo-data';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Catalogue = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,7 +50,10 @@ const Catalogue = () => {
         `)
         .eq('status', 'active');
 
-      if (error) throw error;
+      if (error) {
+        toast.error("Erreur de chargement des produits: " + error.message);
+        throw error;
+      }
       return data;
     }
   });
@@ -67,18 +71,25 @@ const Catalogue = () => {
   const filteredProducts = useMemo(() => {
     if (!products) return [];
 
+    console.log("Données brutes Supabase:", products.length, "produits");
+    if (products.length > 0) {
+      console.log("Exemple de produit:", products[0]);
+    }
+
     let result = [...products];
 
     // Filter by category
     if (selectedCategory) {
+      const categoryLower = selectedCategory.toLowerCase();
       result = result.filter(p => {
-        // Handle both object category (old demo) and string category (new DB)
-        const catSlug = typeof (p as any).category === 'string'
-          ? (p as any).category.toLowerCase()
-          : (p as any).category?.slug?.toLowerCase();
+        const productCat = (p as any).category;
+        const catSlug = typeof productCat === 'string'
+          ? productCat.toLowerCase()
+          : productCat?.slug?.toLowerCase();
 
-        return catSlug === selectedCategory.toLowerCase();
+        return catSlug === categoryLower;
       });
+      console.log(`Après filtre catégorie (${selectedCategory}):`, result.length);
     }
 
     // Filter by city (Note: in real DP, city might be in profile or product)
