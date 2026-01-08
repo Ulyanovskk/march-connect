@@ -239,18 +239,29 @@ const VendorDashboard = () => {
 
   const fetchOrders = async (vendorId: string) => {
     try {
-      // Fetch orders directly for this vendor
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('vendor_id', vendorId)
-        .order('created_at', { ascending: false });
+      // Fetch orders that contain products from this vendor
+      // We need to join through order_items -> products -> vendors
+      const { data: orderItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          order_id,
+          orders!inner(*)
+        `)
+        .eq('vendor_id', vendorId);
 
-      if (ordersError) throw ordersError;
+      if (itemsError) throw itemsError;
 
-      setOrders((orders || []) as Order[]);
+      // Extract unique orders (remove duplicates)
+      const uniqueOrders = Array.from(
+        new Map(
+          (orderItems || []).map(item => [item.orders.id, item.orders])
+        ).values()
+      );
+
+      setOrders(uniqueOrders as Order[]);
     } catch (error: any) {
       console.error('Error fetching orders:', error.message);
+      // Don't show error toast, just log it
     }
   };
 
