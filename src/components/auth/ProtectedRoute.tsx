@@ -76,8 +76,21 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
                     }
                 } else {
                     console.warn('[ACL] No role in user_roles, using metadata:', roleFromMetadata);
-                    // Default client doesn't need onboarding check from vendor table
-                    setOnboardingCompleted(true);
+                    
+                    // If vendor from metadata, check vendor profile
+                    if (roleFromMetadata === 'vendor') {
+                        const { data: vendorProfile } = await supabase
+                            .from('vendors')
+                            .select('id')
+                            .eq('user_id', session.user.id)
+                            .maybeSingle();
+                        
+                        setOnboardingCompleted(!!vendorProfile);
+                        console.log(`[ACL] Vendor from metadata | Has Profile: ${!!vendorProfile}`);
+                    } else {
+                        // Client doesn't need vendor onboarding
+                        setOnboardingCompleted(true);
+                    }
                 }
             } catch (error) {
                 console.error('Auth check error:', error);
