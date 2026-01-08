@@ -26,10 +26,45 @@ import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+// Simplified type definitions to avoid deep type instantiation issues
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  stock: number | null;
+  category_id: string | null;
+  description: string | null;
+  images: string[] | null;
+  vendor_id: string;
+  is_active: boolean | null;
+  views: number | null;
+  created_at: string;
+  updated_at: string;
+};
 
-type Product = Database['public']['Tables']['products']['Row'];
-type Order = Database['public']['Tables']['orders']['Row'];
+type Order = {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  delivery_address: string;
+  delivery_city: string;
+  delivery_fee: number;
+  subtotal: number;
+  total: number;
+  payment_status: string;
+  status: string;
+  payment_method: string;
+  payment_reference: string | null;
+  items: any;
+  created_at: string;
+  updated_at: string;
+  user_id: string | null;
+  vendor_id: string | null;
+  currency: string;
+  customer_whatsapp: string | null;
+  delivery_notes: string | null;
+};
 
 // Custom Image Upload Component
 const ImageUpload = ({ value, onChange, id }: { value: string[], onChange: (val: string[]) => void, id: string }) => {
@@ -157,6 +192,7 @@ const generateSlug = (text: string) => {
 const VendorDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -207,6 +243,7 @@ const VendorDashboard = () => {
 
       if (vendorData) {
         setVendorId(vendorData.id);
+        fetchCategories();
         fetchProducts(vendorData.id);
         fetchOrders(vendorData.id);
       } else {
@@ -217,6 +254,20 @@ const VendorDashboard = () => {
 
     checkAuthAndFetch();
   }, [navigate]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error: any) {
+      console.error('Error fetching categories:', error.message);
+    }
+  };
 
   const fetchProducts = async (vendorId: string) => {
     try {
@@ -239,26 +290,31 @@ const VendorDashboard = () => {
 
   const fetchOrders = async (vendorId: string) => {
     try {
-      // Fetch orders that contain products from this vendor
-      // We need to join through order_items -> products -> vendors
-      const { data: orderItems, error: itemsError } = await supabase
+      // Fetch order_items for this vendor first
+      const { data: items, error: itemsErr } = await supabase
         .from('order_items')
-        .select(`
-          order_id,
-          orders!inner(*)
-        `)
+        .select('order_id')
         .eq('vendor_id', vendorId);
 
-      if (itemsError) throw itemsError;
+      if (itemsErr) throw itemsErr;
+      if (!items || items.length === 0) {
+        setOrders([]);
+        return;
+      }
 
-      // Extract unique orders (remove duplicates)
-      const uniqueOrders = Array.from(
-        new Map(
-          (orderItems || []).map(item => [item.orders.id, item.orders])
-        ).values()
-      );
+      // Get unique order IDs
+      const orderIds = [...new Set(items.map(i => i.order_id))];
 
-      setOrders(uniqueOrders as Order[]);
+      // Fetch full order details
+      const { data: ordersData, error: ordersErr } = await supabase
+        .from('orders')
+        .select('*')
+        .in('id', orderIds)
+        .order('created_at', { ascending: false });
+
+      if (ordersErr) throw ordersErr;
+
+      setOrders((ordersData || []) as Order[]);
     } catch (error: any) {
       console.error('Error fetching orders:', error.message);
       // Don't show error toast, just log it
@@ -305,7 +361,7 @@ const VendorDashboard = () => {
       setIsSubmitting(true);
       
       // Find category UUID from slug
-      const categoryObj = demoCategories.find(c => c.slug === newProduct.category);
+      const categoryObj = categories.find(c => c.slug === newProduct.category);
       
       const { data, error } = await supabase
         .from('products')
@@ -367,7 +423,7 @@ const VendorDashboard = () => {
       setIsSubmitting(true);
       
       // Find category UUID from slug
-      const categoryObj = demoCategories.find(c => c.slug === editProduct.category);
+      const categoryObj = categories.find(c => c.slug === editProduct.category);
       
       const { error } = await supabase
         .from('products')
