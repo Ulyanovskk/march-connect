@@ -246,7 +246,13 @@ const VendorDashboard = () => {
   };
 
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.price) {
+    // Nettoyage des entrées pour éviter XSS et données malveillantes
+    const sanitize = (text: string) => text.trim().replace(/[<>]/g, "");
+
+    const cleanName = sanitize(newProduct.name);
+    const cleanDescription = sanitize(newProduct.description);
+
+    if (!cleanName || !newProduct.price) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -261,15 +267,15 @@ const VendorDashboard = () => {
       const { data, error } = await supabase
         .from('products')
         .insert({
-          name: newProduct.name,
-          slug: generateSlug(newProduct.name),
+          name: cleanName,
+          slug: generateSlug(cleanName),
           price: Number(newProduct.price),
           stock: Number(newProduct.stock) || 0,
           category: newProduct.category,
-          description: newProduct.description,
+          description: cleanDescription,
           image: newProduct.images[0],
           images: newProduct.images,
-          vendor_id: userId, // Re-ajouté car TS le demande comme obligatoire
+          vendor_id: userId,
           status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock'
         } as any)
         .select();
