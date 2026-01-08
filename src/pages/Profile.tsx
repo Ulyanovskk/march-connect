@@ -371,7 +371,7 @@ const Profile = () => {
                                             </div>
                                             <h3 className="text-xl font-bold mb-2">Votre panier est bien calme...</h3>
                                             <p className="text-muted-foreground font-medium mb-8 max-w-xs mx-auto">Vous n'avez pas encore passé de commande sur notre plateforme.</p>
-                                            <Button asChild pill size="lg" className="px-10 h-14 font-black">
+                                            <Button asChild size="lg" className="rounded-full px-10 h-14 font-black">
                                                 <Link to="/catalogue">Explorer le catalogue</Link>
                                             </Button>
                                         </Card>
