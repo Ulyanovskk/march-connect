@@ -24,37 +24,16 @@ const VendorOnboarding = () => {
     });
 
     useEffect(() => {
-        const checkStatus = async () => {
+        // We only check if the user is logged in, ProtectedRoute handles the rest
+        const checkAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 navigate('/login');
                 return;
             }
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('onboarding_completed, role')
-                .eq('id', session.user.id)
-                .single();
-
-            if (profile) {
-                const profileData = profile as any;
-                const role = profileData.role || session.user.user_metadata?.role || 'client';
-
-                if (role !== 'vendor' && role !== 'admin') {
-                    navigate('/onboarding/client');
-                    return;
-                }
-
-                if (profileData.onboarding_completed) {
-                    navigate('/vendor/dashboard');
-                    return;
-                }
-            }
             setIsLoading(false);
         };
-
-        checkStatus();
+        checkAuth();
     }, [navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -76,13 +55,19 @@ const VendorOnboarding = () => {
                     shop_description: formData.shop_description,
                     has_physical_store: formData.has_physical_store === 'yes',
                     shop_category: formData.shop_category,
+                    role: 'vendor', // ON FORCE LE ROLE ICI
                     onboarding_completed: true
                 } as any);
 
             if (error) throw error;
 
             toast.success('Votre boutique est prête ! Bienvenue cher partenaire.');
-            navigate('/vendor/dashboard');
+
+            // Un petit délai de 500ms permet aux modifications de se propager 
+            // avant que ProtectedRoute ne fasse sa vérification au changement de route
+            setTimeout(() => {
+                navigate('/vendor/dashboard');
+            }, 500);
         } catch (error: any) {
             toast.error('Erreur: ' + error.message);
         } finally {

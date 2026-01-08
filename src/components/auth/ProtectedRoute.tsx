@@ -41,21 +41,21 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
                     .eq("id", session.user.id)
                     .single();
 
-                if (profileError) {
-                    // PGRST116 means "No rows found", which is normal for a new user
-                    if (profileError.code !== 'PGRST116') {
-                        console.error("Erreur structurelle Profile:", profileError);
-                        // Si l'erreur est "Column not found", on l'affiche pour debugger
-                        if (profileError.message.includes("onboarding_completed")) {
-                            toast.error("Base de données non à jour : colonne 'onboarding_completed' manquante.");
-                        }
-                    }
-                }
-
                 if (profile) {
                     const profileData = profile as any;
-                    setUserRole(profileData.role || roleFromMetadata);
-                    setOnboardingCompleted(!!profileData.onboarding_completed);
+                    const finalRole = profileData.role || roleFromMetadata;
+                    const finalOnboarding = !!profileData.onboarding_completed;
+
+                    console.log(`[ACL] User: ${session.user.id} | Role: ${finalRole} | Onboarding: ${finalOnboarding}`);
+
+                    setUserRole(finalRole);
+                    setOnboardingCompleted(finalOnboarding);
+                } else {
+                    console.warn("[ACL] No profile found for user, using metadata role.");
+                }
+
+                if (profileError && profileError.code !== 'PGRST116') {
+                    console.error("Profile error:", profileError);
                 }
             } catch (error) {
                 console.error("Auth check error:", error);
@@ -66,7 +66,7 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
         };
 
         checkAuth();
-    }, []);
+    }, [location.pathname]); // On revérifie au changement de route
 
     if (isLoading) {
         return (

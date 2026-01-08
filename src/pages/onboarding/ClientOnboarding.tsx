@@ -14,37 +14,16 @@ const ClientOnboarding = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const checkStatus = async () => {
+        const checkAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 navigate('/login');
                 return;
             }
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('onboarding_completed, role')
-                .eq('id', session.user.id)
-                .single();
-
-            if (profile) {
-                const profileData = profile as any;
-                const role = profileData.role || session.user.user_metadata?.role || 'client';
-
-                if (role === 'vendor') {
-                    navigate('/onboarding/vendor');
-                    return;
-                }
-
-                if (profileData.onboarding_completed) {
-                    navigate('/shop');
-                    return;
-                }
-            }
             setIsLoading(false);
         };
 
-        checkStatus();
+        checkAuth();
     }, [navigate]);
 
     const toggleCategory = (id: string) => {
