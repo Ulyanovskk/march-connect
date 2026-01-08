@@ -278,12 +278,13 @@ const VendorDashboard = () => {
           slug: generateSlug(cleanName),
           price: Number(newProduct.price),
           stock: Number(newProduct.stock) || 0,
-          category: newProduct.category,
+          category: newProduct.category.toLowerCase().trim(),
           description: cleanDescription,
           image: newProduct.images[0],
           images: newProduct.images,
           vendor_id: userId,
-          status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock'
+          status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock',
+          is_active: Number(newProduct.stock) > 0
         } as any)
         .select();
 
@@ -337,11 +338,12 @@ const VendorDashboard = () => {
           slug: generateSlug(editProduct.name),
           price: Number(editProduct.price),
           stock: Number(editProduct.stock) || 0,
-          category: editProduct.category,
+          category: editProduct.category.toLowerCase().trim(),
           description: editProduct.description,
           image: editProduct.images[0],
           images: editProduct.images,
-          status: Number(editProduct.stock) > 0 ? 'active' : 'out_of_stock'
+          status: Number(editProduct.stock) > 0 ? 'active' : 'out_of_stock',
+          is_active: Number(editProduct.stock) > 0
         } as any)
         .eq('id', editingProduct.id);
 

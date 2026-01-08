@@ -46,7 +46,7 @@ const Catalogue = () => {
           *,
           vendor:profiles(shop_name, shop_city, avatar_url)
         `)
-        .eq('status', 'active');
+        .eq('is_active', true);
 
       if (selectedCategory) query = query.ilike('category', selectedCategory);
       if (searchQuery) query = query.ilike('name', `%${searchQuery}%`);
