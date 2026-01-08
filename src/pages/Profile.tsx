@@ -1,25 +1,32 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Store, Mail, ShieldCheck, Save, Loader2, Calendar } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+    User, Store, Mail, ShieldCheck, Save, Loader2, Calendar,
+    LogOut, Settings, Bell, CreditCard, ShoppingBag,
+    ChevronRight, MapPin, Camera, Star
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingBag as ShoppingBagIcon, Package, Clock, CheckCircle2 } from 'lucide-react';
+import { Package, Clock, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '@/lib/demo-data';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const Profile = () => {
+    const navigate = useNavigate();
     const [profile, setProfile] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState('personal');
 
     useEffect(() => {
         fetchProfileAndOrders();
@@ -28,7 +35,10 @@ const Profile = () => {
     const fetchProfileAndOrders = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+            if (!session) {
+                navigate('/login');
+                return;
+            }
 
             // Fetch Profile
             const { data: profileData, error: profileError } = await supabase
@@ -41,7 +51,7 @@ const Profile = () => {
             setProfile(profileData);
 
             // Fetch Client Orders
-            const { data: ordersData, error: ordersError } = await supabase
+            const { data: ordersData, error: ordersError } = await (supabase as any)
                 .from('orders')
                 .select('*')
                 .eq('user_id', session.user.id)
@@ -58,18 +68,24 @@ const Profile = () => {
         }
     };
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/');
+        toast.success("Déconnexion réussie");
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending_verification':
-                return <Badge className="bg-orange-100 text-orange-600 border-0 flex items-center gap-1"><Clock className="w-3 h-3" /> À vérifier</Badge>;
+                return <Badge className="bg-amber-100 text-amber-700 border-none px-3 py-1 rounded-full"><Clock className="w-3 h-3 mr-1" /> À vérifier</Badge>;
             case 'paid':
-                return <Badge className="bg-blue-100 text-blue-600 border-0 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Payé</Badge>;
+                return <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 rounded-full"><CheckCircle2 className="w-3 h-3 mr-1" /> Payé</Badge>;
             case 'processing':
-                return <Badge className="bg-purple-100 text-purple-600 border-0 flex items-center gap-1"><Package className="w-3 h-3" /> En cours</Badge>;
+                return <Badge className="bg-indigo-100 text-indigo-700 border-none px-3 py-1 rounded-full"><Package className="w-3 h-3 mr-1" /> En cours</Badge>;
             case 'completed':
-                return <Badge className="bg-green-100 text-green-600 border-0 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Livré</Badge>;
+                return <Badge className="bg-blue-100 text-blue-700 border-none px-3 py-1 rounded-full"><CheckCircle2 className="w-3 h-3 mr-1" /> Livré</Badge>;
             default:
-                return <Badge variant="secondary">{status}</Badge>;
+                return <Badge variant="secondary" className="rounded-full px-3 py-1">{status}</Badge>;
         }
     };
 
@@ -97,195 +113,343 @@ const Profile = () => {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                    <p className="text-muted-foreground font-medium animate-pulse">Chargement de votre univers...</p>
+                </div>
             </div>
         );
     }
 
+    const menuItems = [
+        { id: 'personal', label: 'Profil Personnel', icon: User, color: 'text-blue-500', bg: 'bg-blue-50' },
+        { id: 'orders', label: 'Mes Commandes', icon: ShoppingBag, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+        { id: 'security', label: 'Sécurité', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-50' },
+        { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50' },
+    ];
+
+    if (profile?.role === 'vendor') {
+        menuItems.splice(1, 0, { id: 'shop', label: 'Ma Boutique', icon: Store, color: 'text-orange-500', bg: 'bg-orange-50' });
+    }
+
     return (
-        <div className="min-h-screen bg-muted/30 flex flex-col">
+        <div className="min-h-screen bg-[#F8F9FC] flex flex-col">
             <Header />
 
-            <main className="flex-1 container mx-auto px-4 py-12">
-                <div className="max-w-4xl mx-auto space-y-8">
-                    <div className="flex items-center gap-4 mb-2">
-                        <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-primary/20">
-                            {profile?.email?.[0].toUpperCase()}
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-black tracking-tight">Mon Profil</h1>
-                            <p className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
-                                <ShieldCheck className="w-4 h-4 text-yarid-green" />
-                                Compte {profile?.role === 'vendor' ? 'Vendeur' : 'Client'} vérifié
-                            </p>
-                        </div>
-                    </div>
+            <main className="flex-1">
+                {/* Profile Banner */}
+                <div className="h-48 bg-gradient-to-r from-primary/90 to-primary relative overflow-hidden">
+                    <div className="absolute inset-0 bg-grid-white/10" />
+                    <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+                    <div className="absolute top-12 -right-12 w-48 h-48 bg-black/10 rounded-full blur-2xl" />
+                </div>
 
-                    <div className="grid md:grid-cols-4 gap-8">
-                        {/* Sidebar Stats */}
-                        <div className="md:col-span-1 space-y-6">
-                            <Card className="border-0 shadow-soft">
-                                <CardContent className="p-6 space-y-4">
-                                    <div className="flex items-center gap-3 text-sm font-medium">
-                                        <Mail className="w-4 h-4 text-primary" />
-                                        <span className="truncate">{profile?.email}</span>
+                <div className="container mx-auto px-4 -mt-20 relative z-10 pb-20">
+                    <div className="grid lg:grid-cols-12 gap-8">
+
+                        {/* LEFT COLUMN: NAVIGATION */}
+                        <aside className="lg:col-span-3 space-y-6">
+                            <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden">
+                                <div className="p-6 text-center border-b bg-white">
+                                    <div className="relative inline-block group mb-4">
+                                        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary-foreground p-1 shadow-lg shadow-primary/20">
+                                            <div className="w-full h-full rounded-[20px] bg-white flex items-center justify-center text-4xl font-black text-primary overflow-hidden">
+                                                {profile?.avatar_url ? (
+                                                    <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-primary hover:scale-110 transition-transform">
+                                            <Camera className="w-4 h-4" />
+                                        </button>
                                     </div>
-                                    <div className="flex items-center gap-3 text-sm font-medium">
-                                        <Calendar className="w-4 h-4 text-primary" />
-                                        <span>Inscrit le {new Date(profile?.created_at).toLocaleDateString()}</span>
+                                    <h2 className="text-xl font-bold tracking-tight">{profile?.full_name || 'Utilisateur'}</h2>
+                                    <p className="text-sm text-muted-foreground mt-1 mb-4">{profile?.email}</p>
+                                    <Badge variant="secondary" className="rounded-full px-4 py-1 font-bold">
+                                        {profile?.role === 'vendor' ? '🏆 Vendeur Pro' : '🛍️ Client Privilège'}
+                                    </Badge>
+                                </div>
+
+                                <div className="p-3 space-y-1 bg-white">
+                                    {menuItems.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setActiveTab(item.id)}
+                                            className={cn(
+                                                "w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
+                                                activeTab === item.id
+                                                    ? "bg-primary/5 text-primary"
+                                                    : "text-muted-foreground hover:bg-muted/50"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn("p-2 rounded-lg transition-colors", activeTab === item.id ? "bg-primary text-white" : item.bg)}>
+                                                    <item.icon className={cn("w-4 h-4", activeTab === item.id ? "text-white" : item.color)} />
+                                                </div>
+                                                <span className="font-bold text-sm">{item.label}</span>
+                                            </div>
+                                            <ChevronRight className={cn("w-4 h-4 transition-transform", activeTab === item.id ? "translate-x-1" : "opacity-0 group-hover:opacity-100")} />
+                                        </button>
+                                    ))}
+
+                                    <div className="pt-4 mt-4 border-t px-3 pb-2">
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-full flex items-center gap-3 p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-bold text-sm"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Déconnexion
+                                        </button>
                                     </div>
-                                    <div className="pt-4 border-t">
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Status</p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-yarid-green animate-pulse" />
-                                            <span className="text-sm font-bold">Connecté</span>
+                                </div>
+                            </Card>
+
+                            <Card className="border-none shadow-lg shadow-gray-200/50 p-6 bg-gradient-to-br from-indigo-600 to-purple-700 text-white">
+                                <h3 className="font-bold mb-2">Besoin d'aide ?</h3>
+                                <p className="text-xs text-indigo-100 mb-4 leading-relaxed">Notre équipe support est disponible 7j/7 pour vous accompagner.</p>
+                                <Button variant="secondary" size="sm" className="w-full rounded-lg font-bold">Contacter le support</Button>
+                            </Card>
+                        </aside>
+
+                        {/* RIGHT COLUMN: CONTENT */}
+                        <div className="lg:col-span-9 space-y-6">
+
+                            {/* Personal Info Tab */}
+                            {activeTab === 'personal' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-6 flex items-center justify-between">
+                                        <div>
+                                            <h1 className="text-2xl font-black">Informations Personnelles</h1>
+                                            <p className="text-muted-foreground font-medium">Gérez votre identité et vos informations de contact</p>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        </div>
 
-                        {/* Main Content with Tabs */}
-                        <div className="md:col-span-3">
-                            <Tabs defaultValue="info" className="space-y-6">
-                                <TabsList className="bg-white/50 border shadow-sm p-1">
-                                    <TabsTrigger value="info" className="gap-2 px-6">
-                                        <User className="w-4 h-4" />
-                                        Profil
-                                    </TabsTrigger>
-                                    <TabsTrigger value="orders" className="gap-2 px-6">
-                                        <ShoppingBagIcon className="w-4 h-4" />
-                                        Mes Commandes ({orders.length})
-                                    </TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="info">
-                                    <Card className="border-0 shadow-soft bg-card overflow-hidden">
-                                        <CardHeader className="bg-muted/50 border-b">
-                                            <CardTitle className="text-lg">Informations Personnelles</CardTitle>
+                                    <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden">
+                                        <CardHeader className="p-8 border-b bg-white">
+                                            <CardTitle className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                                    <Settings className="w-4 h-4 text-blue-500" />
+                                                </div>
+                                                Détails du compte
+                                            </CardTitle>
+                                            <CardDescription>Votre identité sur la plateforme March Connect</CardDescription>
                                         </CardHeader>
-                                        <CardContent className="p-8">
-                                            <form onSubmit={handleUpdate} className="space-y-6">
-                                                <div className="grid sm:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nom Complet</Label>
-                                                        <div className="relative">
-                                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <CardContent className="p-8 bg-white">
+                                            <form onSubmit={handleUpdate} className="space-y-8">
+                                                <div className="grid md:grid-cols-2 gap-8">
+                                                    <div className="space-y-3">
+                                                        <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Nom Complet</Label>
+                                                        <div className="relative group">
+                                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                                             <Input
                                                                 value={profile?.full_name || ''}
                                                                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                                                className="pl-10 h-12 bg-muted/30 border-0 focus-visible:ring-primary rounded-xl"
+                                                                className="pl-12 h-14 bg-muted/30 border-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-2xl font-medium"
                                                                 placeholder="Votre nom"
                                                             />
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-2 text-muted-foreground opacity-60">
-                                                        <Label className="text-xs font-black uppercase tracking-widest">Email (Non modifiable)</Label>
+                                                    <div className="space-y-3 opacity-80">
+                                                        <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Adresse Email</Label>
                                                         <div className="relative">
-                                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
-                                                            <Input value={profile?.email} disabled className="pl-10 h-12 bg-muted/20 border-0 rounded-xl cursor-not-allowed" />
+                                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                            <Input value={profile?.email} disabled className="pl-12 h-14 bg-muted/10 border-none rounded-2xl cursor-not-allowed italic" />
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                {profile?.role === 'vendor' && (
-                                                    <div className="pt-6 border-t space-y-6">
-                                                        <h3 className="text-lg font-bold flex items-center gap-2">
-                                                            <Store className="w-5 h-5 text-yarid-orange" />
-                                                            Informations Boutique
-                                                        </h3>
-                                                        <div className="space-y-4">
-                                                            <div className="space-y-2">
-                                                                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nom de la Boutique</Label>
-                                                                <Input
-                                                                    value={profile?.shop_name || ''}
-                                                                    onChange={(e) => setProfile({ ...profile, shop_name: e.target.value })}
-                                                                    className="h-12 bg-muted/30 border-0 focus-visible:ring-primary rounded-xl"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Description</Label>
-                                                                <Textarea
-                                                                    value={profile?.shop_description || ''}
-                                                                    onChange={(e) => setProfile({ ...profile, shop_description: e.target.value })}
-                                                                    className="bg-muted/30 border-0 focus-visible:ring-primary rounded-xl"
-                                                                    rows={4}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                <div className="pt-4 flex justify-end">
+                                                <div className="pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
+                                                    <p className="text-sm text-muted-foreground italic flex items-center gap-2">
+                                                        <Calendar className="w-4 h-4" />
+                                                        Membre depuis le {new Date(profile?.created_at).toLocaleDateString()}
+                                                    </p>
                                                     <Button
                                                         type="submit"
-                                                        className="h-12 px-8 rounded-xl font-bold gap-2 shadow-lg shadow-primary/20"
+                                                        className="h-14 px-10 rounded-2xl font-black gap-2 shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                                         disabled={isSaving}
                                                     >
-                                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                                        Enregistrer les modifications
+                                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-5 h-5" />}
+                                                        Sauvegarder les modifications
                                                     </Button>
                                                 </div>
                                             </form>
                                         </CardContent>
                                     </Card>
-                                </TabsContent>
+                                </div>
+                            )}
 
-                                <TabsContent value="orders">
-                                    <Card className="border-0 shadow-soft bg-card">
-                                        <CardHeader className="border-b">
-                                            <CardTitle className="text-lg">Historique de mes commandes</CardTitle>
+                            {/* Shop Tab (Vendor only) */}
+                            {activeTab === 'shop' && profile?.role === 'vendor' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-6">
+                                        <h1 className="text-2xl font-black">Mon Espace Boutique</h1>
+                                        <p className="text-muted-foreground font-medium">Configurez l'apparence et l'identité de votre commerce</p>
+                                    </div>
+
+                                    <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden">
+                                        <CardHeader className="p-8 border-b bg-white">
+                                            <CardTitle className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                                                    <Store className="w-4 h-4 text-orange-500" />
+                                                </div>
+                                                Paramètres de la vitrine
+                                            </CardTitle>
+                                            <CardDescription>Informations visibles par vos futurs clients</CardDescription>
                                         </CardHeader>
-                                        <CardContent className="p-0">
-                                            {orders.length === 0 ? (
-                                                <div className="p-12 text-center space-y-4">
-                                                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                                                        <ShoppingBagIcon className="w-8 h-8 text-muted-foreground" />
+                                        <CardContent className="p-8 bg-white">
+                                            <form onSubmit={handleUpdate} className="space-y-6">
+                                                <div className="space-y-4">
+                                                    <div className="grid md:grid-cols-2 gap-6">
+                                                        <div className="space-y-3">
+                                                            <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground">Nom Public de la Boutique</Label>
+                                                            <Input
+                                                                value={profile?.shop_name || ''}
+                                                                onChange={(e) => setProfile({ ...profile, shop_name: e.target.value })}
+                                                                placeholder="Ex: Yaoundé Tech Store"
+                                                                className="h-14 bg-muted/30 border-none rounded-2xl font-bold text-lg focus-visible:ring-2 focus-visible:ring-orange-500/20"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground">Localisation</Label>
+                                                            <div className="relative">
+                                                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                                <Input
+                                                                    value={profile?.shop_city || ''}
+                                                                    disabled
+                                                                    className="pl-12 h-14 bg-muted/10 border-none rounded-2xl italic opacity-70"
+                                                                />
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-muted-foreground font-medium">Vous n'avez pas encore passé de commande.</p>
-                                                    <Button asChild variant="outline">
-                                                        <Link to="/shop">Commencer mes achats</Link>
+
+                                                    <div className="space-y-3">
+                                                        <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground">Description de la Boutique</Label>
+                                                        <Textarea
+                                                            value={profile?.shop_description || ''}
+                                                            onChange={(e) => setProfile({ ...profile, shop_description: e.target.value })}
+                                                            placeholder="Décrivez votre boutique en quelques lignes..."
+                                                            className="bg-muted/30 border-none rounded-2xl min-h-[120px] focus-visible:ring-2 focus-visible:ring-orange-500/20"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 border-t flex justify-end">
+                                                    <Button
+                                                        type="submit"
+                                                        className="h-14 px-10 rounded-2xl font-black bg-orange-500 hover:bg-orange-600 shadow-xl shadow-orange-500/30"
+                                                        disabled={isSaving}
+                                                    >
+                                                        Mettre à jour ma vitrine
                                                     </Button>
                                                 </div>
-                                            ) : (
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-sm">
-                                                        <thead className="bg-muted/50 border-b">
-                                                            <tr>
-                                                                <th className="px-6 py-4 text-left font-bold">Commande</th>
-                                                                <th className="px-6 py-4 text-left font-bold">Date</th>
-                                                                <th className="px-6 py-4 text-left font-bold">Statut</th>
-                                                                <th className="px-6 py-4 text-right font-bold">Total</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y">
-                                                            {orders.map((order) => (
-                                                                <tr key={order.id} className="hover:bg-muted/20 transition-colors">
-                                                                    <td className="px-6 py-4">
-                                                                        <span className="font-mono text-xs font-bold text-primary">
-                                                                            {order.order_number || order.id.substring(0, 8)}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-6 py-4 text-muted-foreground">
-                                                                        {new Date(order.created_at).toLocaleDateString()}
-                                                                    </td>
-                                                                    <td className="px-6 py-4">
-                                                                        {getStatusBadge(order.payment_status || order.status)}
-                                                                    </td>
-                                                                    <td className="px-6 py-4 text-right font-black">
-                                                                        {formatPrice(order.total_amount || order.total)}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
+                                            </form>
                                         </CardContent>
                                     </Card>
-                                </TabsContent>
-                            </Tabs>
+                                </div>
+                            )}
+
+                            {/* Orders Tab */}
+                            {activeTab === 'orders' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-6 flex items-center justify-between">
+                                        <div>
+                                            <h1 className="text-2xl font-black">Mes Commandes</h1>
+                                            <p className="text-muted-foreground font-medium">Historique complet de vos achats et suivis</p>
+                                        </div>
+                                        <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border font-bold text-sm">
+                                            Total: {orders.length}
+                                        </div>
+                                    </div>
+
+                                    {orders.length === 0 ? (
+                                        <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl p-16 text-center bg-white">
+                                            <div className="w-24 h-24 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                <ShoppingBag className="w-10 h-10 text-muted-foreground" />
+                                            </div>
+                                            <h3 className="text-xl font-bold mb-2">Votre panier est bien calme...</h3>
+                                            <p className="text-muted-foreground font-medium mb-8 max-w-xs mx-auto">Vous n'avez pas encore passé de commande sur notre plateforme.</p>
+                                            <Button asChild pill size="lg" className="px-10 h-14 font-black">
+                                                <Link to="/catalogue">Explorer le catalogue</Link>
+                                            </Button>
+                                        </Card>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {orders.map((order) => (
+                                                <Card key={order.id} className="border-none shadow-lg shadow-gray-200/30 rounded-2xl overflow-hidden bg-white hover:scale-[1.01] transition-all group">
+                                                    <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                        <div className="flex items-start gap-6">
+                                                            <div className="w-16 h-16 rounded-2xl bg-muted flex flex-col items-center justify-center shrink-0 border border-muted-foreground/10 group-hover:bg-primary/5 transition-colors">
+                                                                <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">ORD</span>
+                                                                <span className="font-mono font-black text-primary">#{order.order_number || order.id.substring(0, 4)}</span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-3 flex-wrap">
+                                                                    <span className="font-black text-lg">{formatPrice(order.total_amount || order.total)}</span>
+                                                                    {getStatusBadge(order.payment_status || order.status)}
+                                                                </div>
+                                                                <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
+                                                                    <Calendar className="w-4 h-4" />
+                                                                    Passée le {new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                                                </p>
+                                                                <p className="text-xs bg-muted/50 w-fit px-2 py-1 rounded text-muted-foreground italic">
+                                                                    ID: {order.id}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button variant="outline" className="rounded-xl font-bold" size="sm">
+                                                                Détails
+                                                            </Button>
+                                                            <Button className="rounded-xl font-bold gap-2" size="sm">
+                                                                Recommander
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Security Placeholder */}
+                            {activeTab === 'security' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-6">
+                                        <h1 className="text-2xl font-black">Sécurité & Confidentialité</h1>
+                                        <p className="text-muted-foreground font-medium">Protégez votre compte et gérez vos accès</p>
+                                    </div>
+                                    <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl p-12 text-center bg-white">
+                                        <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                            <ShieldCheck className="w-10 h-10" />
+                                        </div>
+                                        <h3 className="text-xl font-bold mb-4">Fonctionnalité en cours de déploiement</h3>
+                                        <p className="text-muted-foreground max-w-md mx-auto mb-8">Nous mettons à jour notre système de sécurité. Pour le moment, seul le changement d'email est restreint. Vous pourrez bientôt modifier votre mot de passe ici.</p>
+                                        <Button variant="outline" className="rounded-2xl h-12 font-bold px-8">En savoir plus</Button>
+                                    </Card>
+                                </div>
+                            )}
+
+                            {/* Notifications Placeholder */}
+                            {activeTab === 'notifications' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-6">
+                                        <h1 className="text-2xl font-black">Vos Notifications</h1>
+                                        <p className="text-muted-foreground font-medium">Restez informé de l'activité de vos commandes</p>
+                                    </div>
+                                    <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl p-16 text-center bg-white">
+                                        <div className="w-20 h-20 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                                            <Bell className="w-10 h-10" />
+                                        </div>
+                                        <h3 className="text-xl font-bold mb-4">Tout est calme ici !</h3>
+                                        <p className="text-muted-foreground">Vous n'avez aucune nouvelle notification pour le moment.</p>
+                                    </Card>
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
