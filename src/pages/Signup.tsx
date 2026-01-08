@@ -23,6 +23,9 @@ const Signup = () => {
     confirmPassword: '',
   });
   const [accountType, setAccountType] = useState<'client' | 'vendor'>(isVendorSignup ? 'vendor' : 'client');
+  
+  // Debug: Log the role being sent
+  console.log('[SIGNUP] isVendorSignup:', isVendorSignup, '| accountType:', accountType);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +49,9 @@ const Signup = () => {
 
     setIsLoading(true);
 
+    const finalRole = isVendorSignup ? 'vendor' : accountType;
+    console.log('[SIGNUP] Submitting with role:', finalRole);
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
@@ -55,27 +61,44 @@ const Signup = () => {
           data: {
             full_name: formData.fullName,
             phone: formData.phone,
-            role: isVendorSignup ? 'vendor' : accountType,
+            role: finalRole,
           },
         },
       });
 
+      console.log('[SIGNUP] Response:', { 
+        user: data?.user?.id, 
+        session: !!data?.session, 
+        error: error?.message 
+      });
+
       if (error) {
+        console.error('[SIGNUP] Error:', error);
         toast.error(error.message);
         return;
       }
 
       if (data.user) {
+        console.log('[SIGNUP] User created:', data.user.id);
+        console.log('[SIGNUP] User metadata:', data.user.user_metadata);
+        console.log('[SIGNUP] Has session:', !!data.session);
+        
         toast.success('Compte créé avec succès !');
+        
         // If email confirmation is disabled or auto-confirmed
         if (!data.session) {
+          console.warn('[SIGNUP] No session - email confirmation required');
           toast.info('Veuillez vérifier votre email pour confirmer votre compte.', { duration: 5000 });
+        } else {
+          console.log('[SIGNUP] Session created - user logged in automatically');
         }
 
         // Redirect to login or dashboard
         setTimeout(() => {
           navigate('/login');
         }, 1500);
+      } else {
+        console.error('[SIGNUP] No user in response!');
       }
     } catch (error: any) {
       toast.error('Une erreur est survenue lors de l\'inscription');
@@ -229,7 +252,10 @@ const Signup = () => {
               <Label>Type de compte</Label>
               <RadioGroup
                 value={accountType}
-                onValueChange={(value) => setAccountType(value as 'client' | 'vendor')}
+                onValueChange={(value) => {
+                  console.log('[SIGNUP] Type de compte changé:', value);
+                  setAccountType(value as 'client' | 'vendor');
+                }}
                 className="grid grid-cols-2 gap-4"
               >
                 <Label

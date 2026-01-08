@@ -88,6 +88,22 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
         };
 
         checkAuth();
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (!session) {
+                setIsAuthenticated(false);
+                setUserRole(null);
+                setOnboardingCompleted(false);
+            } else {
+                // Re-run the check when auth state changes
+                checkAuth();
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []); // Only run once on mount
 
     if (isLoading) {

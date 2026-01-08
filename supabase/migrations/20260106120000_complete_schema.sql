@@ -787,7 +787,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  user_role TEXT;
 BEGIN
+  -- Créer le profil
   INSERT INTO public.profiles (id, full_name, phone)
   VALUES (
     NEW.id,
@@ -795,9 +798,12 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data ->> 'phone', '')
   );
   
-  -- Rôle par défaut: client
+  -- Récupérer le rôle depuis les métadonnées ou utiliser 'client' par défaut
+  user_role := COALESCE(NEW.raw_user_meta_data ->> 'role', 'client');
+  
+  -- Créer l'entrée user_role avec le bon rôle
   INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, 'client');
+  VALUES (NEW.id, user_role::app_role);
   
   RETURN NEW;
 END;

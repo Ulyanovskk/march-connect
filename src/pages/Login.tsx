@@ -36,14 +36,24 @@ const Login = () => {
       if (data.user) {
         toast.success('Connexion réussie !');
 
-        // Check role and redirect
-        const role = data.user.user_metadata?.role;
+        // Get role from database (not just metadata)
+        const { data: userRoleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .single();
+
+        const role = userRoleData?.role || data.user.user_metadata?.role || 'client';
+
+        console.log('[LOGIN] User role from database:', role);
 
         if (role === 'admin') {
           navigate('/admin/payments');
         } else if (role === 'vendor') {
+          // Redirect to dashboard, ProtectedRoute will intercept if onboarding needed
           navigate('/vendor/dashboard');
         } else {
+          // Redirect to shop, ProtectedRoute will intercept if onboarding needed
           navigate('/shop');
         }
       }
