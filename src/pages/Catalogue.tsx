@@ -4,6 +4,7 @@ import { Filter, Grid3X3, List, ChevronDown, X, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/ui/ProductCard';
+import TestProducts from '@/components/TestProducts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -40,31 +41,24 @@ const Catalogue = () => {
   const { data: products, isLoading } = useQuery({
     queryKey: ['products', selectedCategory, selectedCities.join(','), priceRange, searchQuery],
     queryFn: async () => {
-      let query = (supabase as any)
+      // Essai avec une requête plus simple
+      const { data, error } = await (supabase as any)
         .from('products')
         .select(`
           *,
-          vendor:profiles(shop_name, shop_city, avatar_url)
+          vendor:vendors (shop_name, shop_city)
         `)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .limit(20);
 
-      if (selectedCategory) query = query.ilike('category', selectedCategory);
-      if (searchQuery) query = query.ilike('name', `%${searchQuery}%`);
-
-      // Basic price filtering in Supabase for speed
-      if (priceRange) {
-        const parts = priceRange.split('-');
-        const min = parseInt(parts[0]);
-        const max = parts[1] === '+' ? null : (parts[1] ? parseInt(parts[1]) : null);
-
-        query = query.gte('price', min);
-        if (max) query = query.lte('price', max);
+      if (error) {
+        console.error('Products query error:', error);
+        throw error;
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-
-      // Filter by city locally as it's deeper in the join
+      console.log('Raw products data:', data);
+      
+      // Filtrer localement par ville si nécessaire
       let result = data || [];
       if (selectedCities.length > 0) {
         result = result.filter((p: any) => selectedCities.includes(p.vendor?.shop_city));
@@ -198,6 +192,7 @@ const Catalogue = () => {
       <Header />
 
       <main className="flex-1 bg-muted/20">
+        <TestProducts /> {/* Debug component - remove later */}
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -297,8 +292,8 @@ const Catalogue = () => {
                       price={product.price}
                       originalPrice={product.original_price}
                       image={product.images?.[0]}
-                      vendorName={(product.vendor as any)?.shop_name || 'Vendeur Vérifié'}
-                      vendorCity={(product.vendor as any)?.shop_city || 'Cameroun'}
+                      vendorName={product.vendor?.shop_name || 'Vendeur Vérifié'}
+                      vendorCity={product.vendor?.shop_city || 'Cameroun'}
                       isVerified={true}
                       stock={product.stock}
                     />

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CartItem {
   id: string;
@@ -35,6 +36,72 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return [];
     }
   });
+
+  // Clear cart when user logs out or logs in as different user
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        // User logged out - clear cart
+        setItems([]);
+        localStorage.removeItem(CART_STORAGE_KEY);
+      } else {
+        // User logged in - load their cart from DB or keep anonymous cart
+        loadUserCart(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserCart = async (userId: string) => {
+    try {
+      // Load user's cart from database
+      const { data: dbCart, error } = await supabase
+        .from('cart_items')
+        .select(`
+          *,
+          product:products (
+            id,
+            name,
+            price,
+            original_price,
+            images,
+            vendor:vendors (shop_name)
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      if (dbCart && dbCart.length > 0) {
+        // Convert DB cart items to CartItem format
+        const cartItems: CartItem[] = dbCart.map((item: any) => ({
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          originalPrice: item.product.original_price,
+          image: item.product.images?.[0] || '',
+          quantity: item.quantity,
+          vendorName: item.product.vendor?.shop_name || 'Vendeur',
+          vendorCity: 'Cameroun'
+        }));
+        
+        setItems(cartItems);
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+      } else {
+        // Keep existing anonymous cart or initialize empty
+        const stored = localStorage.getItem(CART_STORAGE_KEY);
+        const anonymousCart = stored ? JSON.parse(stored) : [];
+        setItems(anonymousCart);
+      }
+    } catch (error) {
+      console.error('Error loading user cart:', error);
+      // Fallback to localStorage
+      const stored = localStorage.getItem(CART_STORAGE_KEY);
+      const fallbackCart = stored ? JSON.parse(stored) : [];
+      setItems(fallbackCart);
+    }
+  };
 
   // Persist to localStorage
   useEffect(() => {

@@ -27,7 +27,8 @@ const ProductDetail = () => {
         .from('products')
         .select(`
           *,
-          vendor:profiles!products_vendor_id_fkey (
+          category:categories (name, slug),
+          vendor:vendors (
             shop_name,
             shop_description,
             has_physical_store,
