@@ -35,11 +35,22 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
                 setUserRole(roleFromMetadata);
 
                 // Check profile for onboarding status
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from("profiles")
                     .select("role, onboarding_completed")
                     .eq("id", session.user.id)
                     .single();
+
+                if (profileError) {
+                    // PGRST116 means "No rows found", which is normal for a new user
+                    if (profileError.code !== 'PGRST116') {
+                        console.error("Erreur structurelle Profile:", profileError);
+                        // Si l'erreur est "Column not found", on l'affiche pour debugger
+                        if (profileError.message.includes("onboarding_completed")) {
+                            toast.error("Base de données non à jour : colonne 'onboarding_completed' manquante.");
+                        }
+                    }
+                }
 
                 if (profile) {
                     const profileData = profile as any;

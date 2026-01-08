@@ -67,6 +67,7 @@ const ClientOnboarding = () => {
             toast.success('Préférences enregistrées ! Bienvenue chez March Connect.');
             navigate('/shop');
         } catch (error: any) {
+            console.error("Erreur Onboarding:", error);
             toast.error('Erreur: ' + error.message);
         } finally {
             setIsSubmitting(false);
