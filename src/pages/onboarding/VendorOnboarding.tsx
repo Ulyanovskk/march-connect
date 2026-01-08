@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import { Store, Loader2, Sparkles, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const VendorOnboarding = () => {
-    const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
@@ -22,19 +21,6 @@ const VendorOnboarding = () => {
         has_physical_store: 'no',
         shop_category: '',
     });
-
-    useEffect(() => {
-        // We only check if the user is logged in, ProtectedRoute handles the rest
-        const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                navigate('/login');
-                return;
-            }
-            setIsLoading(false);
-        };
-        checkAuth();
-    }, [navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,42 +32,64 @@ const VendorOnboarding = () => {
         setIsSubmitting(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const { error } = await supabase
-                .from('profiles')
-                .upsert({
-                    id: session?.user.id,
-                    email: session?.user.email,
-                    shop_name: formData.shop_name,
-                    shop_description: formData.shop_description,
-                    has_physical_store: formData.has_physical_store === 'yes',
-                    shop_category: formData.shop_category,
-                    role: 'vendor', // ON FORCE LE ROLE ICI
-                    onboarding_completed: true
-                } as any);
+            if (!session) {
+                toast.error('Session expirée');
+                navigate('/login');
+                return;
+            }
 
-            if (error) throw error;
+            // Get user profile data
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('phone, full_name')
+                .eq('id', session.user.id)
+                .single();
+
+            // Generate slug from shop name
+            const slug = formData.shop_name
+                .toLowerCase()
+                .trim()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w-]+/g, '');
+
+            // Create vendor entry
+            const { error: vendorError } = await supabase
+                .from('vendors')
+                .insert({
+                    user_id: session.user.id,
+                    shop_name: formData.shop_name,
+                    slug: slug,
+                    description: formData.shop_description || '',
+                    phone: profile?.phone || '',
+                    whatsapp: profile?.phone || '',
+                    city: 'Douala',
+                    is_active: true,
+                    is_verified: false
+                });
+
+            if (vendorError) throw vendorError;
+
+            // Update user_roles to add vendor role (if not already set)
+            const { error: roleError } = await supabase
+                .from('user_roles')
+                .upsert({
+                    user_id: session.user.id,
+                    role: 'vendor'
+                });
+
+            if (roleError) console.warn('Role update warning:', roleError);
 
             toast.success('Votre boutique est prête ! Bienvenue cher partenaire.');
 
-            // Un petit délai de 500ms permet aux modifications de se propager 
-            // avant que ProtectedRoute ne fasse sa vérification au changement de route
-            setTimeout(() => {
-                navigate('/vendor/dashboard');
-            }, 500);
+            // Redirect to dashboard
+            navigate('/vendor/dashboard');
         } catch (error: any) {
+            console.error('Vendor onboarding error:', error);
             toast.error('Erreur: ' + error.message);
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-muted/30 py-12 px-4 flex items-center justify-center">

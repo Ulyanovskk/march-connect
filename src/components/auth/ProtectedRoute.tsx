@@ -30,35 +30,57 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
 
                 setIsAuthenticated(true);
 
-                // Fast role check from metadata
+                // Get role from user_metadata first (faster)
                 const roleFromMetadata = session.user.user_metadata?.role || 'client';
                 setUserRole(roleFromMetadata);
 
-                // Check profile for onboarding status
-                const { data: profile, error: profileError } = await supabase
-                    .from("profiles")
-                    .select("role, onboarding_completed")
-                    .eq("id", session.user.id)
-                    .single();
+                // Verify role from user_roles table
+                const { data: userRolesData } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', session.user.id);
 
-                if (profile) {
-                    const profileData = profile as any;
-                    const finalRole = profileData.role || roleFromMetadata;
-                    const finalOnboarding = !!profileData.onboarding_completed;
+                if (userRolesData && userRolesData.length > 0) {
+                    const dbRole = userRolesData[0].role;
+                    setUserRole(dbRole);
 
-                    console.log(`[ACL] User: ${session.user.id} | Role: ${finalRole} | Onboarding: ${finalOnboarding}`);
+                    // For vendors, check if vendor profile exists to determine onboarding status
+                    if (dbRole === 'vendor') {
+                        const { data: vendorProfile, error: vendorError } = await supabase
+                            .from('vendors')
+                            .select('id')
+                            .eq('user_id', session.user.id)
+                            .maybeSingle();
 
-                    setUserRole(finalRole);
-                    setOnboardingCompleted(finalOnboarding);
+                        // Vendor profile exists = onboarding complete
+                        const hasCompletedOnboarding = !!vendorProfile && !vendorError;
+                        setOnboardingCompleted(hasCompletedOnboarding);
+
+                        console.log(`[ACL] Vendor ${session.user.id} | Has Profile: ${hasCompletedOnboarding}`);
+                    } else if (dbRole === 'client') {
+                        // For clients, check profiles table
+                        const { data: profileData } = await supabase
+                            .from('profiles')
+                            .select('full_name')
+                            .eq('id', session.user.id)
+                            .single();
+
+                        // If profile has full_name, onboarding is complete
+                        const hasCompletedOnboarding = !!profileData?.full_name;
+                        setOnboardingCompleted(hasCompletedOnboarding);
+
+                        console.log(`[ACL] Client ${session.user.id} | Onboarding: ${hasCompletedOnboarding}`);
+                    } else {
+                        // Admin or other roles don't need onboarding
+                        setOnboardingCompleted(true);
+                    }
                 } else {
-                    console.warn("[ACL] No profile found for user, using metadata role.");
-                }
-
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.error("Profile error:", profileError);
+                    console.warn('[ACL] No role in user_roles, using metadata:', roleFromMetadata);
+                    // Default client doesn't need onboarding check from vendor table
+                    setOnboardingCompleted(true);
                 }
             } catch (error) {
-                console.error("Auth check error:", error);
+                console.error('Auth check error:', error);
                 setIsAuthenticated(false);
             } finally {
                 setIsLoading(false);
@@ -66,7 +88,7 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
         };
 
         checkAuth();
-    }, [location.pathname]); // On revérifie au changement de route
+    }, []); // Only run once on mount
 
     if (isLoading) {
         return (

@@ -26,6 +26,10 @@ import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
+
+type Product = Database['public']['Tables']['products']['Row'];
+type Order = Database['public']['Tables']['orders']['Row'];
 
 // Custom Image Upload Component
 const ImageUpload = ({ value, onChange, id }: { value: string[], onChange: (val: string[]) => void, id: string }) => {
@@ -151,11 +155,12 @@ const generateSlug = (text: string) => {
 
 
 const VendorDashboard = () => {
-  const [products, setProducts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [vendorId, setVendorId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -192,8 +197,22 @@ const VendorDashboard = () => {
       }
 
       setUserId(session.user.id);
-      fetchProducts(session.user.id);
-      fetchOrders(session.user.id);
+
+      // Récupérer le vendor_id réel
+      const { data: vendorData } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (vendorData) {
+        setVendorId(vendorData.id);
+        fetchProducts(vendorData.id);
+        fetchOrders(vendorData.id);
+      } else {
+        toast.error('Profil vendeur introuvable');
+        setIsLoading(false);
+      }
     };
 
     checkAuthAndFetch();
@@ -209,7 +228,7 @@ const VendorDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProducts(data || []);
+      setProducts((data || []) as Product[]);
     } catch (error: any) {
       console.error('Error fetching products:', error.message);
       toast.error('Erreur lors du chargement des produits');
@@ -220,14 +239,16 @@ const VendorDashboard = () => {
 
   const fetchOrders = async (vendorId: string) => {
     try {
-      const { data, error } = await supabase
+      // Fetch orders directly for this vendor
+      const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .eq('vendor_id', vendorId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setOrders(data || []);
+      if (ordersError) throw ordersError;
+
+      setOrders((orders || []) as Order[]);
     } catch (error: any) {
       console.error('Error fetching orders:', error.message);
     }
@@ -239,14 +260,14 @@ const VendorDashboard = () => {
         .from('orders')
         .update({
           payment_status: 'paid',
-          status: 'processing' // On passe en préparation après paiement
-        } as any)
+          status: 'processing'
+        })
         .eq('id', orderId);
 
       if (error) throw error;
 
       toast.success('Paiement confirmé ! La commande est passée en préparation.');
-      if (userId) fetchOrders(userId);
+      if (vendorId) fetchOrders(vendorId);
     } catch (error: any) {
       toast.error('Erreur lors de la validation: ' + error.message);
     }
@@ -271,6 +292,10 @@ const VendorDashboard = () => {
 
     try {
       setIsSubmitting(true);
+      
+      // Find category UUID from slug
+      const categoryObj = demoCategories.find(c => c.slug === newProduct.category);
+      
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -278,14 +303,12 @@ const VendorDashboard = () => {
           slug: generateSlug(cleanName),
           price: Number(newProduct.price),
           stock: Number(newProduct.stock) || 0,
-          category: newProduct.category.toLowerCase().trim(),
+          category_id: categoryObj?.id || null,
           description: cleanDescription,
-          image: newProduct.images[0],
           images: newProduct.images,
-          vendor_id: userId,
-          status: Number(newProduct.stock) > 0 ? 'active' : 'out_of_stock',
+          vendor_id: vendorId,
           is_active: Number(newProduct.stock) > 0
-        } as any)
+        })
         .select();
 
       if (error) throw error;
@@ -293,7 +316,7 @@ const VendorDashboard = () => {
       if (data && data.length > 0) {
         setProducts([data[0], ...products]);
       } else {
-        await fetchProducts(userId!);
+        await fetchProducts(vendorId!);
       }
       setNewProduct({ name: '', price: '', stock: '', category: '', description: '', images: [] });
       setIsAddProductOpen(false);
@@ -331,6 +354,10 @@ const VendorDashboard = () => {
 
     try {
       setIsSubmitting(true);
+      
+      // Find category UUID from slug
+      const categoryObj = demoCategories.find(c => c.slug === editProduct.category);
+      
       const { error } = await supabase
         .from('products')
         .update({
@@ -338,18 +365,16 @@ const VendorDashboard = () => {
           slug: generateSlug(editProduct.name),
           price: Number(editProduct.price),
           stock: Number(editProduct.stock) || 0,
-          category: editProduct.category.toLowerCase().trim(),
+          category_id: categoryObj?.id || null,
           description: editProduct.description,
-          image: editProduct.images[0],
           images: editProduct.images,
-          status: Number(editProduct.stock) > 0 ? 'active' : 'out_of_stock',
           is_active: Number(editProduct.stock) > 0
-        } as any)
+        })
         .eq('id', editingProduct.id);
 
       if (error) throw error;
 
-      await fetchProducts(userId!);
+      await fetchProducts(vendorId!);
       setIsEditProductOpen(false);
       setEditingProduct(null);
       toast.success('Produit modifié avec succès !');
@@ -399,10 +424,10 @@ const VendorDashboard = () => {
 
   // Real stats calculation
   const stats = {
-    totalRevenue: orders.reduce((acc, order) => acc + (Number(order.total_amount || order.total || 0)), 0),
+    totalRevenue: orders.reduce((acc, order) => acc + (Number(order.total || 0)), 0),
     totalOrders: orders.length,
-    totalViews: products.reduce((acc, product) => acc + (product.views_count || 0), 0),
-    activeProducts: products.filter(p => p.status === 'active').length,
+    totalViews: products.reduce((acc, product) => acc + (product.views || 0), 0),
+    activeProducts: products.filter(p => p.is_active).length,
   };
 
   // Simulated data for charts
@@ -415,13 +440,13 @@ const VendorDashboard = () => {
         const orderDate = new Date(order.created_at);
         return format(orderDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       })
-      .reduce((sum, order) => sum + (Number(order.total_amount || order.total || 0)), 0);
+      .reduce((sum, order) => sum + (Number(order.total || 0)), 0);
 
     return { name: dayName, sales: daySales };
   });
 
-  const categoryData = products.reduce((acc: any[], product) => {
-    const cat = product.category || 'Standard';
+  const categoryData = products.reduce((acc: { name: string; value: number }[], product) => {
+    const cat = product.category_id || 'Standard';
     const existing = acc.find(item => item.name === cat);
     if (existing) {
       existing.value += 1;
@@ -435,8 +460,8 @@ const VendorDashboard = () => {
     .slice(0, 5)
     .map(p => ({
       name: p.name.length > 12 ? p.name.substring(0, 10) + '...' : p.name,
-      views: p.views_count || p.views || 0,
-      orders: p.sales_count || 0
+      views: p.views || 0,
+      orders: 0 // This would need to be calculated from order_items if needed
     }));
 
   const COLORS = ['#D97706', '#2563EB', '#10B981', '#7C3AED', '#F43F5E'];
@@ -735,7 +760,7 @@ const VendorDashboard = () => {
                     {products.map(product => (
                       <div key={product.id} className="flex items-center gap-4 p-3 bg-muted/50 rounded-xl">
                         <img
-                          src={product.image}
+                          src={product.images?.[0] || '/placeholder.png'}
                           alt={product.name}
                           className="w-16 h-16 object-cover rounded-lg"
                         />
@@ -748,7 +773,7 @@ const VendorDashboard = () => {
                             <span>{new Date(product.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
-                        {getStatusBadge(product.status)}
+                        {getStatusBadge(product.is_active ? 'active' : 'out_of_stock')}
                         <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
@@ -811,7 +836,7 @@ const VendorDashboard = () => {
                           <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-4">
                               <span className="font-mono font-medium text-xs text-primary">
-                                {order.order_number || order.id.substring(0, 8)}
+                                {order.id.substring(0, 8)}
                               </span>
                             </td>
                             <td className="px-4 py-4">

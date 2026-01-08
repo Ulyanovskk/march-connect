@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { demoCategories } from '@/lib/demo-data';
@@ -10,21 +10,7 @@ import { toast } from 'sonner';
 const ClientOnboarding = () => {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                navigate('/login');
-                return;
-            }
-            setIsLoading(false);
-        };
-
-        checkAuth();
-    }, [navigate]);
 
     const toggleCategory = (id: string) => {
         if (selectedCategories.includes(id)) {
@@ -43,16 +29,32 @@ const ClientOnboarding = () => {
         setIsSubmitting(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const { error } = await supabase
-                .from('profiles')
+            if (!session) {
+                toast.error('Session expirée');
+                navigate('/login');
+                return;
+            }
+
+            // Update user_roles to ensure client role exists
+            const { error: roleError } = await supabase
+                .from('user_roles')
                 .upsert({
-                    id: session?.user.id,
-                    email: session?.user.email,
+                    user_id: session.user.id,
+                    role: 'client'
+                });
+
+            if (roleError) console.warn('Role update warning:', roleError);
+
+            // Update user metadata with client role
+            const { error: metadataError } = await supabase.auth.updateUser({
+                data: { 
+                    role: 'client',
                     favorite_categories: selectedCategories,
                     onboarding_completed: true
-                } as any);
+                }
+            });
 
-            if (error) throw error;
+            if (metadataError) console.warn('Metadata update warning:', metadataError);
 
             toast.success('Préférences enregistrées ! Bienvenue chez Yarid.');
             navigate('/shop');
@@ -63,14 +65,6 @@ const ClientOnboarding = () => {
             setIsSubmitting(false);
         }
     };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-muted/30 py-12 px-4">

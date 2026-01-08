@@ -16,39 +16,63 @@ const AuthCallback = () => {
                     const user = session.user;
                     const pendingRole = localStorage.getItem('pending_role');
 
-                    // 2. If we just signed up via OAuth, we might need to set the role
-                    if (pendingRole) {
+                    // 2. Check if user has role in user_roles table
+                    const { data: userRoles } = await supabase
+                        .from('user_roles')
+                        .select('role')
+                        .eq('user_id', user.id);
+
+                    // Determine the role to use
+                    const roleToUse = userRoles && userRoles.length > 0 
+                        ? userRoles[0].role 
+                        : (pendingRole || user.user_metadata?.role || 'client');
+
+                    // 3. If we have a pending role from OAuth, set it
+                    if (pendingRole && (!userRoles || userRoles.length === 0)) {
                         await supabase
-                            .from('profiles')
+                            .from('user_roles')
                             .upsert({
-                                id: user.id,
-                                email: user.email,
-                                full_name: user.user_metadata.full_name || user.email?.split('@')[0],
-                                role: pendingRole,
-                            } as any);
+                                user_id: user.id,
+                                role: pendingRole as 'admin' | 'client' | 'vendor'
+                            });
+
+                        // Update user metadata
+                        await supabase.auth.updateUser({
+                            data: { role: pendingRole }
+                        });
+
                         localStorage.removeItem('pending_role');
                     }
 
-                    // 3. Get exact profile (using as any to avoid TS errors on dynamic schema)
-                    const { data: profile, error: profileError } = await (supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', user.id)
-                        .single() as any);
+                    // 4. Check if vendor needs vendor profile
+                    if (roleToUse === 'vendor') {
+                        const { data: vendorProfile } = await supabase
+                            .from('vendors')
+                            .select('id')
+                            .eq('user_id', user.id)
+                            .single();
 
-                    // 4. Redirect based on profile state
-                    if (!profile || !profile.onboarding_completed) {
-                        const roleToUse = profile?.role || pendingRole || 'client';
+                        // No vendor profile = needs onboarding
+                        if (!vendorProfile) {
+                            navigate('/onboarding/vendor');
+                            return;
+                        }
+                    }
+
+                    // 5. Check user_metadata for onboarding status
+                    const onboardingCompleted = user.user_metadata?.onboarding_completed;
+
+                    if (!onboardingCompleted) {
                         navigate(roleToUse === 'vendor' ? '/onboarding/vendor' : '/onboarding/client');
                     } else {
-                        if (profile.role === 'admin') navigate('/admin/payments');
-                        else if (profile.role === 'vendor') navigate('/vendor/dashboard');
+                        if (roleToUse === 'admin') navigate('/admin/payments');
+                        else if (roleToUse === 'vendor') navigate('/vendor/dashboard');
                         else navigate('/shop');
                     }
                     return;
                 }
 
-                // 5. Fallback for Email Confirmation (legacy/non-session flow)
+                // 6. Fallback for Email Confirmation (legacy/non-session flow)
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
                 const accessToken = hashParams.get('access_token');
                 const type = hashParams.get('type');
