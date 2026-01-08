@@ -36,7 +36,7 @@ const Landing = () => {
                     <div className="container mx-auto px-4 relative z-10 text-center">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-6">
                             <Zap className="w-3 h-3" />
-                            LA RÉFÉRENCE DU E-COMMERCE AU CAMEROUN
+                            Le e-commerce par vous et pour vous
                         </div>
 
                         <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-6 max-w-4xl mx-auto leading-tight">
