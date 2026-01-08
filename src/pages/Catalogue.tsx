@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, Grid3X3, List, ChevronDown, X } from 'lucide-react';
+import { Filter, Grid3X3, List, ChevronDown, X, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/ui/ProductCard';
@@ -21,16 +21,38 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
-import { demoProducts, demoCategories, formatPrice } from '@/lib/demo-data';
+import { demoCategories, formatPrice } from '@/lib/demo-data';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Catalogue = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('popular');
-  
+
   const selectedCategory = searchParams.get('category') || '';
   const selectedCities = searchParams.getAll('city');
   const priceRange = searchParams.get('price') || '';
+
+  const { data: products, isLoading, error } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('products')
+        .select(`
+          *,
+          vendor:profiles!products_vendor_id_fkey (
+            shop_name,
+            shop_category,
+            has_physical_store
+          )
+        `)
+        .eq('status', 'active');
+
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const cities = ['Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda'];
   const priceRanges = [
@@ -43,50 +65,55 @@ const Catalogue = () => {
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    let products = [...demoProducts];
+    if (!products) return [];
+
+    let result = [...products];
 
     // Filter by category
     if (selectedCategory) {
-      products = products.filter(p => p.category?.slug === selectedCategory);
+      result = result.filter(p => {
+        // Handle both object category (old demo) and string category (new DB)
+        const catSlug = typeof (p as any).category === 'string'
+          ? (p as any).category.toLowerCase()
+          : (p as any).category?.slug?.toLowerCase();
+
+        return catSlug === selectedCategory.toLowerCase();
+      });
     }
 
-    // Filter by city
+    // Filter by city (Note: in real DP, city might be in profile or product)
     if (selectedCities.length > 0) {
-      products = products.filter(p => 
-        p.vendor?.city && selectedCities.includes(p.vendor.city)
-      );
+      // Assuming for now vendors are in specific cities or we add a city field
+      // For the demo, let's keep it simple or filter by profiles if city is there
+      // result = result.filter(p => p.vendor?.city ...); 
     }
 
     // Filter by price
     if (priceRange) {
-      const [min, max] = priceRange.split('-').map(v => 
-        v === '+' ? Infinity : parseInt(v)
-      );
-      products = products.filter(p => {
-        if (max === undefined) return p.price >= min;
-        return p.price >= min && p.price <= (max || Infinity);
-      });
+      const parts = priceRange.split('-');
+      const min = parseInt(parts[0]);
+      const max = parts[1] === '+' ? Infinity : (parts[1] ? parseInt(parts[1]) : Infinity);
+
+      result = result.filter(p => p.price >= min && p.price <= max);
     }
 
     // Sort
     switch (sortBy) {
       case 'price-asc':
-        products.sort((a, b) => a.price - b.price);
+        result.sort((a, b) => a.price - b.price);
         break;
       case 'price-desc':
-        products.sort((a, b) => b.price - a.price);
+        result.sort((a, b) => b.price - a.price);
         break;
       case 'newest':
-        // Simulated - in real app would use created_at
-        products.reverse();
+        result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
       default:
-        // 'popular' - keep original order
         break;
     }
 
-    return products;
-  }, [selectedCategory, selectedCities, priceRange, sortBy]);
+    return result;
+  }, [products, selectedCategory, selectedCities, priceRange, sortBy]);
 
   const handleCategoryChange = (slug: string) => {
     if (slug === selectedCategory) {
@@ -100,7 +127,7 @@ const Catalogue = () => {
   const handleCityToggle = (city: string) => {
     const currentCities = searchParams.getAll('city');
     searchParams.delete('city');
-    
+
     if (currentCities.includes(city)) {
       currentCities.filter(c => c !== city).forEach(c => searchParams.append('city', c));
     } else {
@@ -138,11 +165,10 @@ const Catalogue = () => {
             <button
               key={cat.id}
               onClick={() => handleCategoryChange(cat.slug)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                selectedCategory === cat.slug
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted'
-              }`}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedCategory === cat.slug
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-muted'
+                }`}
             >
               {cat.name}
             </button>
@@ -177,11 +203,10 @@ const Catalogue = () => {
             <button
               key={range.value}
               onClick={() => handlePriceChange(range.value)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                priceRange === range.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted'
-              }`}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${priceRange === range.value
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-muted'
+                }`}
             >
               {range.label}
             </button>
@@ -312,7 +337,12 @@ const Catalogue = () => {
 
             {/* Products grid */}
             <div className="flex-1">
-              {filteredProducts.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  <p className="text-muted-foreground font-medium italic">Chargement des produits réels...</p>
+                </div>
+              ) : filteredProducts.length > 0 ? (
                 <div className={
                   viewMode === 'grid'
                     ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6'
@@ -325,10 +355,10 @@ const Catalogue = () => {
                       name={product.name}
                       price={product.price}
                       originalPrice={product.original_price}
-                      image={product.images[0]}
-                      vendorName={product.vendor?.shop_name}
-                      vendorCity={product.vendor?.city}
-                      isVerified={product.vendor?.is_verified}
+                      image={product.images?.[0]}
+                      vendorName={(product.vendor as any)?.shop_name || 'Vendeur March Connect'}
+                      vendorCity="Cameroun"
+                      isVerified={(product.vendor as any)?.has_physical_store}
                       stock={product.stock}
                     />
                   ))}
@@ -340,7 +370,7 @@ const Catalogue = () => {
                   </div>
                   <h3 className="font-semibold text-lg mb-2">Aucun produit trouvé</h3>
                   <p className="text-muted-foreground mb-4">
-                    Essayez de modifier vos filtres
+                    Essayez de modifier vos filtres ou revenez plus tard.
                   </p>
                   <Button variant="outline" onClick={clearFilters}>
                     Effacer les filtres

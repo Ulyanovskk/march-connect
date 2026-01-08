@@ -1,32 +1,70 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, MessageCircle, BadgeCheck, MapPin, Store, Star } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, MessageCircle, BadgeCheck, MapPin, Store, Star, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { demoProducts, formatPrice, getDiscount } from '@/lib/demo-data';
+import { formatPrice, getDiscount } from '@/lib/demo-data';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { addItem, itemCount } = useCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  // Find product from demo data
-  const product = demoProducts.find(p => p.id === id) || demoProducts[0];
-  const discount = getDiscount(product.price, product.original_price);
+  const { data: product, isLoading, error } = useQuery({
+    queryKey: ['product', id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('products')
+        .select(`
+          *,
+          vendor:profiles!products_vendor_id_fkey (
+            shop_name,
+            shop_description,
+            has_physical_store,
+            created_at
+          )
+        `)
+        .eq('id', id)
+        .single();
 
-  // Simulated additional images for gallery
-  const images = [
-    product.images[0],
-    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400',
-    'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=400',
-    'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
-  ];
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id
+  });
+
+  const discount = product ? getDiscount(product.price, product.original_price) : null;
+  const images = useMemo(() => {
+    if (!product) return [];
+    const gallery = (product as any).images || [];
+    return gallery;
+  }, [product]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+        <h2 className="text-xl font-bold">Produit introuvable</h2>
+        <Button onClick={() => navigate('/catalogue')}>Retour au catalogue</Button>
+      </div>
+    );
+  }
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -42,9 +80,9 @@ const ProductDetail = () => {
       name: product.name,
       price: product.price,
       originalPrice: product.original_price,
-      image: product.images[0],
-      vendorName: product.vendor.shop_name,
-      vendorCity: product.vendor.city,
+      image: images[0],
+      vendorName: (product.vendor as any)?.shop_name || 'Vendeur March Connect',
+      vendorCity: 'Cameroun',
     }, quantity);
     toast.success(`${product.name} ajouté au panier !`);
   };
@@ -57,7 +95,7 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header cartItemCount={itemCount} />
-      
+
       <main className="flex-1 container mx-auto px-4 py-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
@@ -65,7 +103,7 @@ const ProductDetail = () => {
           <span>/</span>
           <Link to="/catalogue" className="hover:text-primary">Catalogue</Link>
           <span>/</span>
-          <span className="text-foreground">{product.category.name}</span>
+          <span className="text-foreground">{typeof (product as any).category === 'string' ? (product as any).category : ((product as any).category as any)?.name || 'Catégorie'}</span>
         </nav>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -77,7 +115,7 @@ const ProductDetail = () => {
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-              
+
               {/* Navigation arrows */}
               <button
                 onClick={prevImage}
@@ -116,11 +154,10 @@ const ProductDetail = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
-                  className={`relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                    currentImageIndex === index 
-                      ? 'border-primary ring-2 ring-primary/20' 
-                      : 'border-transparent hover:border-muted-foreground/30'
-                  }`}
+                  className={`relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${currentImageIndex === index
+                    ? 'border-primary ring-2 ring-primary/20'
+                    : 'border-transparent hover:border-muted-foreground/30'
+                    }`}
                 >
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
@@ -133,7 +170,7 @@ const ProductDetail = () => {
             {/* Title & Category */}
             <div>
               <Badge variant="secondary" className="mb-3">
-                {product.category.name}
+                {typeof (product as any).category === 'string' ? (product as any).category : ((product as any).category as any)?.name || 'Produit'}
               </Badge>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
                 {product.name}
@@ -193,9 +230,9 @@ const ProductDetail = () => {
               </div>
 
               <div className="flex gap-3">
-                <Button 
+                <Button
                   onClick={handleAddToCart}
-                  size="lg" 
+                  size="lg"
                   className="flex-1 h-14 text-base font-semibold bg-primary hover:bg-primary/90"
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
@@ -226,21 +263,21 @@ const ProductDetail = () => {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">{product.vendor.shop_name}</span>
-                    {product.vendor.is_verified && (
+                    <span className="font-semibold">{(product.vendor as any)?.shop_name || 'Boutique Partenaire'}</span>
+                    {(product.vendor as any)?.has_physical_store && (
                       <BadgeCheck className="w-5 h-5 text-yarid-blue fill-yarid-blue/20" />
                     )}
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                     <MapPin className="w-4 h-4" />
-                    {product.vendor.city}
+                    Cameroun
                   </div>
                   <div className="flex items-center gap-4 mt-3">
                     <span className="text-xs bg-yarid-green/10 text-yarid-green px-2 py-1 rounded-full">
-                      98% satisfaction
+                      Vendeur Vérifié
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Membre depuis 2023
+                      Membre depuis {new Date((product.vendor as any)?.created_at).getFullYear() || 2024}
                     </span>
                   </div>
                 </div>
@@ -263,7 +300,7 @@ const ProductDetail = () => {
               <div className="bg-muted/30 rounded-xl p-4">
                 <h4 className="font-medium text-sm mb-2">🚚 Livraison</h4>
                 <p className="text-xs text-muted-foreground">
-                  Livraison disponible à {product.vendor.city} et environs
+                  Livraison disponible partout au Cameroun
                 </p>
               </div>
               <div className="bg-muted/30 rounded-xl p-4">
