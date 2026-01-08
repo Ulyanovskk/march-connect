@@ -67,7 +67,7 @@ const PopularProducts = () => {
                 price={product.price}
                 originalPrice={product.original_price}
                 image={product.images?.[0]}
-                vendorName={(product.vendor as any)?.shop_name || 'Vendeur March Connect'}
+                vendorName={(product.vendor as any)?.shop_name || 'Vendeur Yarid'}
                 vendorCity="Cameroun"
                 isVerified={(product.vendor as any)?.has_physical_store}
                 stock={product.stock}

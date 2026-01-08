@@ -235,7 +235,7 @@ const Profile = () => {
                                                 </div>
                                                 Détails du compte
                                             </CardTitle>
-                                            <CardDescription>Votre identité sur la plateforme March Connect</CardDescription>
+                                            <CardDescription>Votre identité sur la plateforme Yarid</CardDescription>
                                         </CardHeader>
                                         <CardContent className="p-8 bg-white">
                                             <form onSubmit={handleUpdate} className="space-y-8">

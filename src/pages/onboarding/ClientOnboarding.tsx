@@ -54,7 +54,7 @@ const ClientOnboarding = () => {
 
             if (error) throw error;
 
-            toast.success('Préférences enregistrées ! Bienvenue chez March Connect.');
+            toast.success('Préférences enregistrées ! Bienvenue chez Yarid.');
             navigate('/shop');
         } catch (error: any) {
             console.error("Erreur Onboarding:", error);

@@ -82,7 +82,7 @@ const ProductDetail = () => {
       price: product.price,
       originalPrice: product.original_price,
       image: images[0],
-      vendorName: (product.vendor as any)?.shop_name || 'Vendeur March Connect',
+      vendorName: (product.vendor as any)?.shop_name || 'Vendeur Yarid',
       vendorCity: 'Cameroun',
     }, quantity);
     toast.success(`${product.name} ajouté au panier !`);
