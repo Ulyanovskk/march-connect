@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { formatPrice, getDiscount } from '@/lib/demo-data';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductCardProps {
   id: string;
@@ -30,8 +32,33 @@ const ProductCard = ({
   stock = 1,
 }: ProductCardProps) => {
   const { addItem } = useCart();
+  const queryClient = useQueryClient();
   const discount = getDiscount(price, originalPrice ?? null);
   const isOutOfStock = stock <= 0;
+
+  const prefetchProduct = () => {
+    queryClient.prefetchQuery({
+      queryKey: ['product', id],
+      queryFn: async () => {
+        const { data, error } = await (supabase as any)
+          .from('products')
+          .select(`
+            *,
+            vendor:profiles!products_vendor_id_fkey (
+              shop_name,
+              shop_description,
+              has_physical_store,
+              created_at
+            )
+          `)
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        return data;
+      },
+      staleTime: 1000 * 60 * 5,
+    });
+  };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,7 +75,10 @@ const ProductCard = ({
   };
 
   return (
-    <div className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden">
+    <div
+      onMouseEnter={prefetchProduct}
+      className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden"
+    >
       {/* Image */}
       <Link to={`/product/${id}`} className="block relative aspect-square overflow-hidden">
         <img
@@ -57,7 +87,7 @@ const ProductCard = ({
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        
+
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {discount && (
@@ -114,8 +144,8 @@ const ProductCard = ({
         </div>
 
         {/* Add to cart button */}
-        <Button 
-          className="w-full gap-2" 
+        <Button
+          className="w-full gap-2"
           size="sm"
           disabled={isOutOfStock}
           onClick={handleAddToCart}

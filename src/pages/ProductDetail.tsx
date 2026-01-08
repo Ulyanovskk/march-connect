@@ -11,6 +11,7 @@ import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import ProductReviews from '@/components/product/ProductReviews';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -311,6 +312,11 @@ const ProductDetail = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Product Reviews Section */}
+        <div className="mt-12 max-w-4xl">
+          <ProductReviews productId={product.id} />
         </div>
       </main>
 

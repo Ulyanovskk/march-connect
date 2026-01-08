@@ -34,28 +34,46 @@ const Catalogue = () => {
   const selectedCategory = searchParams.get('category') || '';
   const selectedCities = searchParams.getAll('city');
   const priceRange = searchParams.get('price') || '';
+  const searchQuery = searchParams.get('q') || '';
 
-  const { data: products, isLoading, error } = useQuery({
-    queryKey: ['products'],
+  // Products Fetching with performance optimization (Server-side filtering where possible)
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products', selectedCategory, selectedCities.join(','), priceRange, searchQuery],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('products')
         .select(`
           *,
-          vendor:profiles!products_vendor_id_fkey (
-            shop_name,
-            shop_category,
-            has_physical_store
-          )
+          vendor:profiles(shop_name, shop_city, avatar_url)
         `)
         .eq('status', 'active');
 
-      if (error) {
-        toast.error("Erreur de chargement des produits: " + error.message);
-        throw error;
+      if (selectedCategory) query = query.ilike('category', selectedCategory);
+      if (searchQuery) query = query.ilike('name', `%${searchQuery}%`);
+
+      // Basic price filtering in Supabase for speed
+      if (priceRange) {
+        const parts = priceRange.split('-');
+        const min = parseInt(parts[0]);
+        const max = parts[1] === '+' ? null : (parts[1] ? parseInt(parts[1]) : null);
+
+        query = query.gte('price', min);
+        if (max) query = query.lte('price', max);
       }
-      return data;
-    }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Filter by city locally as it's deeper in the join
+      let result = data || [];
+      if (selectedCities.length > 0) {
+        result = result.filter((p: any) => selectedCities.includes(p.vendor?.shop_city));
+      }
+
+      return result;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    gcTime: 1000 * 60 * 30, // 30 minutes in memory
   });
 
   const cities = ['Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda'];
@@ -67,48 +85,10 @@ const Catalogue = () => {
     { value: '1000000+', label: 'Plus de 1 000 000 FCFA' },
   ];
 
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
+  const sortedProducts = useMemo(() => {
     if (!products) return [];
-
-    console.log("Données brutes Supabase:", products.length, "produits");
-    if (products.length > 0) {
-      console.log("Exemple de produit:", products[0]);
-    }
-
     let result = [...products];
 
-    // Filter by category
-    if (selectedCategory) {
-      const categoryLower = selectedCategory.toLowerCase();
-      result = result.filter(p => {
-        const productCat = (p as any).category;
-        const catSlug = typeof productCat === 'string'
-          ? productCat.toLowerCase()
-          : productCat?.slug?.toLowerCase();
-
-        return catSlug === categoryLower;
-      });
-      console.log(`Après filtre catégorie (${selectedCategory}):`, result.length);
-    }
-
-    // Filter by city (Note: in real DP, city might be in profile or product)
-    if (selectedCities.length > 0) {
-      // Assuming for now vendors are in specific cities or we add a city field
-      // For the demo, let's keep it simple or filter by profiles if city is there
-      // result = result.filter(p => p.vendor?.city ...); 
-    }
-
-    // Filter by price
-    if (priceRange) {
-      const parts = priceRange.split('-');
-      const min = parseInt(parts[0]);
-      const max = parts[1] === '+' ? Infinity : (parts[1] ? parseInt(parts[1]) : Infinity);
-
-      result = result.filter(p => p.price >= min && p.price <= max);
-    }
-
-    // Sort
     switch (sortBy) {
       case 'price-asc':
         result.sort((a, b) => a.price - b.price);
@@ -119,26 +99,19 @@ const Catalogue = () => {
       case 'newest':
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
-      default:
-        break;
     }
-
     return result;
-  }, [products, selectedCategory, selectedCities, priceRange, sortBy]);
+  }, [products, sortBy]);
 
   const handleCategoryChange = (slug: string) => {
-    if (slug === selectedCategory) {
-      searchParams.delete('category');
-    } else {
-      searchParams.set('category', slug);
-    }
+    if (slug === selectedCategory) searchParams.delete('category');
+    else searchParams.set('category', slug);
     setSearchParams(searchParams);
   };
 
   const handleCityToggle = (city: string) => {
     const currentCities = searchParams.getAll('city');
     searchParams.delete('city');
-
     if (currentCities.includes(city)) {
       currentCities.filter(c => c !== city).forEach(c => searchParams.append('city', c));
     } else {
@@ -148,37 +121,27 @@ const Catalogue = () => {
   };
 
   const handlePriceChange = (value: string) => {
-    if (value === priceRange) {
-      searchParams.delete('price');
-    } else {
-      searchParams.set('price', value);
-    }
+    if (value === priceRange) searchParams.delete('price');
+    else searchParams.set('price', value);
     setSearchParams(searchParams);
   };
 
-  const clearFilters = () => {
-    setSearchParams({});
-  };
+  const clearFilters = () => setSearchParams({});
 
-  const activeFiltersCount = [
-    selectedCategory,
-    ...selectedCities,
-    priceRange
-  ].filter(Boolean).length;
+  const activeFiltersCount = [selectedCategory, ...selectedCities, priceRange].filter(Boolean).length;
 
   const FilterContent = () => (
     <div className="space-y-6">
-      {/* Categories */}
       <div>
         <h3 className="font-semibold mb-3">Catégories</h3>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {demoCategories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => handleCategoryChange(cat.slug)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedCategory === cat.slug
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-muted'
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${selectedCategory === cat.slug
+                ? 'bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20'
+                : 'hover:bg-muted text-muted-foreground'
                 }`}
             >
               {cat.name}
@@ -187,36 +150,32 @@ const Catalogue = () => {
         </div>
       </div>
 
-      {/* Cities */}
       <div>
         <h3 className="font-semibold mb-3">Ville</h3>
         <div className="space-y-2">
           {cities.map((city) => (
-            <label
-              key={city}
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label key={city} className="flex items-center gap-2 cursor-pointer group">
               <Checkbox
                 checked={selectedCities.includes(city)}
                 onCheckedChange={() => handleCityToggle(city)}
+                className="transition-transform group-hover:scale-110"
               />
-              <span className="text-sm">{city}</span>
+              <span className="text-sm group-hover:text-primary transition-colors">{city}</span>
             </label>
           ))}
         </div>
       </div>
 
-      {/* Price range */}
       <div>
         <h3 className="font-semibold mb-3">Prix</h3>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {priceRanges.map((range) => (
             <button
               key={range.value}
               onClick={() => handlePriceChange(range.value)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${priceRange === range.value
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-muted'
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${priceRange === range.value
+                ? 'bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20'
+                : 'hover:bg-muted text-muted-foreground'
                 }`}
             >
               {range.label}
@@ -225,13 +184,8 @@ const Catalogue = () => {
         </div>
       </div>
 
-      {/* Clear filters */}
       {activeFiltersCount > 0 && (
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={clearFilters}
-        >
+        <Button variant="outline" className="w-full rounded-xl hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors" onClick={clearFilters}>
           <X className="h-4 w-4 mr-2" />
           Effacer les filtres
         </Button>
@@ -243,84 +197,36 @@ const Catalogue = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">
-          {/* Page header */}
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              Catalogue
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
-            </p>
-          </div>
-
-          {/* Toolbar */}
-          <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-            <div className="flex items-center gap-2">
-              {/* Mobile filter button */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" className="lg:hidden gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filtres
-                    {activeFiltersCount > 0 && (
-                      <Badge className="ml-1 bg-primary text-primary-foreground">
-                        {activeFiltersCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-80">
-                  <SheetHeader>
-                    <SheetTitle>Filtres</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    <FilterContent />
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              {/* Active filters badges */}
-              <div className="hidden sm:flex items-center gap-2 flex-wrap">
-                {selectedCategory && (
-                  <Badge variant="secondary" className="gap-1">
-                    {demoCategories.find(c => c.slug === selectedCategory)?.name}
-                    <button onClick={() => handleCategoryChange(selectedCategory)}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {selectedCities.map(city => (
-                  <Badge key={city} variant="secondary" className="gap-1">
-                    {city}
-                    <button onClick={() => handleCityToggle(city)}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+      <main className="flex-1 bg-muted/20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-foreground">
+                Notre Catalogue
+              </h1>
+              <p className="text-muted-foreground mt-1 font-medium">
+                Découvrez {sortedProducts.length} pépites sélectionnées pour vous
+              </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Sort */}
+            <div className="flex items-center gap-3">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] bg-white border-none shadow-sm h-11 rounded-xl">
                   <SelectValue placeholder="Trier par" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="popular">Plus populaires</SelectItem>
-                  <SelectItem value="newest">Plus récents</SelectItem>
-                  <SelectItem value="price-asc">Prix croissant</SelectItem>
-                  <SelectItem value="price-desc">Prix décroissant</SelectItem>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="popular">💎 Plus populaires</SelectItem>
+                  <SelectItem value="newest">🆕 Plus récents</SelectItem>
+                  <SelectItem value="price-asc">📈 Prix croissant</SelectItem>
+                  <SelectItem value="price-desc">📉 Prix décroissant</SelectItem>
                 </SelectContent>
               </Select>
 
-              {/* View mode */}
-              <div className="hidden md:flex items-center border rounded-lg">
+              <div className="hidden md:flex items-center bg-white p-1 rounded-xl shadow-sm">
                 <Button
                   variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                   size="icon"
+                  className="rounded-lg h-9 w-9"
                   onClick={() => setViewMode('grid')}
                 >
                   <Grid3X3 className="h-4 w-4" />
@@ -328,6 +234,7 @@ const Catalogue = () => {
                 <Button
                   variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                   size="icon"
+                  className="rounded-lg h-9 w-9"
                   onClick={() => setViewMode('list')}
                 >
                   <List className="h-4 w-4" />
@@ -336,30 +243,53 @@ const Catalogue = () => {
             </div>
           </div>
 
-          {/* Main content */}
-          <div className="flex gap-8">
-            {/* Desktop sidebar filters */}
-            <aside className="hidden lg:block w-64 shrink-0">
-              <div className="sticky top-24 bg-card rounded-2xl p-6 shadow-soft">
-                <h2 className="font-semibold text-lg mb-4">Filtres</h2>
+          <div className="flex flex-col lg:flex-row gap-8">
+            <aside className="lg:w-72 shrink-0">
+              <div className="hidden lg:block sticky top-24 bg-white rounded-2xl p-6 shadow-soft border border-white/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-bold text-xl tracking-tight">Filtres</h2>
+                  <Filter className="w-5 h-5 text-primary" />
+                </div>
                 <FilterContent />
+              </div>
+
+              <div className="lg:hidden flex items-center gap-2 mb-6">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="flex-1 h-12 rounded-xl bg-white border-none shadow-sm gap-2 font-bold">
+                      <Filter className="h-4 w-4" />
+                      Affiner ma recherche
+                      {activeFiltersCount > 0 && (
+                        <Badge className="ml-1 bg-primary text-primary-foreground rounded-full h-5 w-5 p-0 flex items-center justify-center">
+                          {activeFiltersCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-full sm:w-[400px]">
+                    <SheetHeader className="mb-6">
+                      <SheetTitle className="text-2xl font-black">Filtres</SheetTitle>
+                    </SheetHeader>
+                    <FilterContent />
+                  </SheetContent>
+                </Sheet>
               </div>
             </aside>
 
-            {/* Products grid */}
             <div className="flex-1">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <p className="text-muted-foreground font-medium italic">Chargement des produits réels...</p>
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="aspect-[4/5] bg-white rounded-2xl animate-pulse shadow-sm" />
+                  ))}
                 </div>
-              ) : filteredProducts.length > 0 ? (
+              ) : sortedProducts.length > 0 ? (
                 <div className={
                   viewMode === 'grid'
                     ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6'
                     : 'space-y-4'
                 }>
-                  {filteredProducts.map((product) => (
+                  {sortedProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       id={product.id}
@@ -367,24 +297,24 @@ const Catalogue = () => {
                       price={product.price}
                       originalPrice={product.original_price}
                       image={product.images?.[0]}
-                      vendorName={(product.vendor as any)?.shop_name || 'Vendeur March Connect'}
-                      vendorCity="Cameroun"
-                      isVerified={(product.vendor as any)?.has_physical_store}
+                      vendorName={(product.vendor as any)?.shop_name || 'Vendeur Vérifié'}
+                      vendorCity={(product.vendor as any)?.shop_city || 'Cameroun'}
+                      isVerified={true}
                       stock={product.stock}
                     />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                <div className="bg-white rounded-3xl py-20 px-6 text-center shadow-soft border border-white">
+                  <div className="w-24 h-24 bg-muted/30 mx-auto mb-6 rounded-full flex items-center justify-center">
                     <Filter className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">Aucun produit trouvé</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Essayez de modifier vos filtres ou revenez plus tard.
+                  <h3 className="font-bold text-2xl mb-2">Aucun résultat</h3>
+                  <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
+                    Nous n'avons trouvé aucun produit correspondant à vos filtres actuels. Essayez d'élargir votre recherche.
                   </p>
-                  <Button variant="outline" onClick={clearFilters}>
-                    Effacer les filtres
+                  <Button size="lg" className="rounded-xl px-10 font-bold" onClick={clearFilters}>
+                    Réinitialiser tout
                   </Button>
                 </div>
               )}
