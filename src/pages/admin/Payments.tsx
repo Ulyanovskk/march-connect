@@ -21,22 +21,21 @@ import { fr } from 'date-fns/locale';
 import { Search, Filter, Download, CreditCard, DollarSign, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Payment {
+interface OrderPayment {
     id: string;
-    amount: number;
-    status: string;
+    total: number;
+    payment_status: string;
     payment_method: string;
-    transaction_id: string;
+    payment_reference: string | null;
     created_at: string;
-    orders: {
-        user_id: string;
-        order_number: string;
-    } | null;
+    customer_name: string;
+    customer_email: string | null;
+    user_id: string | null;
 }
 
 const AdminPayments = () => {
     const navigate = useNavigate();
-    const [payments, setPayments] = useState<Payment[]>([]);
+    const [orders, setOrders] = useState<OrderPayment[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterMethod, setFilterMethod] = useState<string>('all');
@@ -51,29 +50,27 @@ const AdminPayments = () => {
         try {
             setLoading(true);
 
-            // TODO: Real Admin Check (Task 2)
+            // TODO: Real Admin Check
             // const { data: { user } } = await supabase.auth.getUser();
             // if (!user) return navigate('/login');
-            // Check role...
 
             let query = supabase
-                .from('payments')
+                .from('orders')
                 .select(`
-          id,
-          amount,
-          status,
-          payment_method,
-          transaction_id,
-          created_at,
-          orders (
-            user_id,
-            order_number
-          )
-        `)
+                    id,
+                    total,
+                    payment_status,
+                    payment_method,
+                    payment_reference,
+                    created_at,
+                    customer_name,
+                    customer_email,
+                    user_id
+                `)
                 .order('created_at', { ascending: false });
 
             if (filterStatus !== 'all') {
-                query = query.eq('status', filterStatus);
+                query = query.eq('payment_status', filterStatus);
             }
 
             if (filterMethod !== 'all') {
@@ -106,7 +103,7 @@ const AdminPayments = () => {
 
             if (error) throw error;
 
-            setPayments(data as any || []);
+            setOrders(data || []);
         } catch (error: any) {
             console.error('Error fetching payments:', error);
             toast.error('Erreur lors du chargement des paiements');
@@ -119,8 +116,8 @@ const AdminPayments = () => {
         switch (status.toLowerCase()) {
             case 'completed':
             case 'succeeded':
-            case 'success':
-                return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-0">Succès</Badge>;
+            case 'paid':
+                return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-0">Payé</Badge>;
             case 'pending':
                 return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-0">En attente</Badge>;
             case 'failed':
@@ -130,15 +127,21 @@ const AdminPayments = () => {
         }
     };
 
-    const filteredPayments = payments.filter(payment => {
+    const filteredOrders = orders.filter(order => {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         return (
-            payment.transaction_id?.toLowerCase().includes(term) ||
-            payment.orders?.order_number?.toLowerCase().includes(term) ||
-            payment.orders?.user_id?.toLowerCase().includes(term)
+            order.payment_reference?.toLowerCase().includes(term) ||
+            order.customer_name?.toLowerCase().includes(term) ||
+            order.customer_email?.toLowerCase().includes(term) ||
+            order.id?.toLowerCase().includes(term)
         );
     });
+
+    const totalRevenue = orders.reduce((acc, curr) => {
+        const isPaid = ['completed', 'succeeded', 'paid'].includes(curr.payment_status?.toLowerCase() || '');
+        return acc + (isPaid ? curr.total : 0);
+    }, 0);
 
     return (
         <div className="min-h-screen bg-muted/30 flex flex-col">
@@ -173,7 +176,7 @@ const AdminPayments = () => {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {(payments.reduce((acc, curr) => acc + (curr.status === 'completed' || curr.status === 'succeeded' ? curr.amount : 0), 0)).toLocaleString('fr-CM')} FCFA
+                                {totalRevenue.toLocaleString('fr-CM')} FCFA
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Total des paiements réussis
@@ -186,9 +189,9 @@ const AdminPayments = () => {
                             <CreditCard className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{payments.length}</div>
+                            <div className="text-2xl font-bold">{orders.length}</div>
                             <p className="text-xs text-muted-foreground">
-                                Nombre total de transactions
+                                Nombre total de commandes
                             </p>
                         </CardContent>
                     </Card>
@@ -198,9 +201,16 @@ const AdminPayments = () => {
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">--</div>
+                            <div className="text-2xl font-bold">
+                                {orders.filter(o => {
+                                    const orderDate = new Date(o.created_at);
+                                    const now = new Date();
+                                    return orderDate.getMonth() === now.getMonth() && 
+                                           orderDate.getFullYear() === now.getFullYear();
+                                }).length}
+                            </div>
                             <p className="text-xs text-muted-foreground">
-                                Données du mois en cours
+                                Commandes ce mois
                             </p>
                         </CardContent>
                     </Card>
@@ -215,7 +225,7 @@ const AdminPayments = () => {
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="search"
-                                        placeholder="Rechercher ID, User..."
+                                        placeholder="Rechercher..."
                                         className="pl-9"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -227,9 +237,9 @@ const AdminPayments = () => {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Tous les statuts</SelectItem>
-                                        <SelectItem value="completed">Completés</SelectItem>
+                                        <SelectItem value="paid">Payé</SelectItem>
                                         <SelectItem value="pending">En attente</SelectItem>
-                                        <SelectItem value="failed">Échoués</SelectItem>
+                                        <SelectItem value="failed">Échoué</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Select value={filterMethod} onValueChange={setFilterMethod}>
@@ -238,9 +248,11 @@ const AdminPayments = () => {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Toutes méthodes</SelectItem>
-                                        <SelectItem value="stripe">Stripe</SelectItem>
+                                        <SelectItem value="card">Carte</SelectItem>
+                                        <SelectItem value="paypal">PayPal</SelectItem>
                                         <SelectItem value="orange_money">Orange Money</SelectItem>
                                         <SelectItem value="mtn_momo">MTN MoMo</SelectItem>
+                                        <SelectItem value="binance">Binance</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Select value={filterDate} onValueChange={setFilterDate}>
@@ -266,8 +278,8 @@ const AdminPayments = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>ID Transaction</TableHead>
-                                        <TableHead>Utilisateur / Commande</TableHead>
+                                        <TableHead>ID Commande</TableHead>
+                                        <TableHead>Client</TableHead>
                                         <TableHead>Montant</TableHead>
                                         <TableHead>Méthode</TableHead>
                                         <TableHead>Date</TableHead>
@@ -282,35 +294,33 @@ const AdminPayments = () => {
                                                 Chargement...
                                             </TableCell>
                                         </TableRow>
-                                    ) : filteredPayments.length === 0 ? (
+                                    ) : filteredOrders.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={7} className="h-24 text-center">
                                                 Aucun paiement trouvé
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredPayments.map((payment) => (
-                                            <TableRow key={payment.id}>
+                                        filteredOrders.map((order) => (
+                                            <TableRow key={order.id}>
                                                 <TableCell className="font-medium">
-                                                    <div className="flex flex-col">
-                                                        <span className="truncate max-w-[150px]" title={payment.transaction_id || payment.id}>
-                                                            {payment.transaction_id || payment.id.slice(0, 8) + '...'}
-                                                        </span>
-                                                    </div>
+                                                    <span className="truncate max-w-[150px]" title={order.id}>
+                                                        {order.id.slice(0, 8)}...
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-medium">User: {payment.orders?.user_id?.slice(0, 8)}...</span>
-                                                        <span className="text-xs text-muted-foreground">Cmd: {payment.orders?.order_number || 'N/A'}</span>
+                                                        <span className="text-sm font-medium">{order.customer_name}</span>
+                                                        <span className="text-xs text-muted-foreground">{order.customer_email || 'N/A'}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>{payment.amount?.toLocaleString('fr-CM')} FCFA</TableCell>
-                                                <TableCell className="capitalize">{payment.payment_method?.replace('_', ' ')}</TableCell>
+                                                <TableCell>{order.total?.toLocaleString('fr-CM')} FCFA</TableCell>
+                                                <TableCell className="capitalize">{order.payment_method?.replace('_', ' ')}</TableCell>
                                                 <TableCell>
-                                                    {payment.created_at && format(new Date(payment.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
+                                                    {order.created_at && format(new Date(order.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {getStatusBadge(payment.status)}
+                                                    {getStatusBadge(order.payment_status)}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="sm">
