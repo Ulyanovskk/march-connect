@@ -549,11 +549,14 @@ const VendorDashboard = () => {
     const loadViewStats = async () => {
       if (vendorId) {
         try {
+          console.log('🔍 Loading view stats for vendor:', vendorId);
           const viewStats = await fetchVendorViewStats(vendorId);
+          console.log('📊 View stats loaded:', viewStats);
           setRealViews(viewStats.totalViews);
         } catch (error) {
-          console.log('Could not load view stats:', error);
+          console.error('❌ Could not load view stats:', error);
           // Keep 0 as fallback
+          setRealViews(0);
         }
       }
     };

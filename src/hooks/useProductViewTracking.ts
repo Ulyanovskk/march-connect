@@ -76,16 +76,26 @@ export const useProductViewTracking = (productId: string) => {
 // Fonction pour obtenir les statistiques de vues d'un vendeur
 export const fetchVendorViewStats = async (vendorId: string) => {
   try {
+    console.log('🔍 Fetching view stats for vendor:', vendorId);
+    
     // Obtenir tous les produits du vendeur
     const { data: products, error: productsError } = await supabase
       .from('products')
       .select('id')
       .eq('vendor_id', vendorId);
 
-    if (productsError) throw productsError;
-    if (!products || products.length === 0) return { totalViews: 0, uniqueVisitors: 0 };
+    if (productsError) {
+      console.error('❌ Error fetching products:', productsError);
+      throw productsError;
+    }
+    
+    if (!products || products.length === 0) {
+      console.log('ℹ️ No products found for vendor');
+      return { totalViews: 0, uniqueVisitors: 0 };
+    }
 
     const productIds = products.map(p => p.id);
+    console.log('📦 Found products:', productIds.length);
 
     // Compter les vues pour tous les produits du vendeur
     const { count: totalViews, error: viewsError } = await supabase
@@ -93,7 +103,15 @@ export const fetchVendorViewStats = async (vendorId: string) => {
       .select('*', { count: 'exact', head: true })
       .in('product_id', productIds);
 
-    if (viewsError) throw viewsError;
+    if (viewsError) {
+      console.error('❌ Error counting views:', viewsError);
+      // Si la table n'existe pas, retourner 0
+      if (viewsError.message.includes('relation "product_views" does not exist')) {
+        console.log('⚠️ product_views table does not exist yet');
+        return { totalViews: 0, uniqueVisitors: 0 };
+      }
+      throw viewsError;
+    }
 
     // Compter les visiteurs uniques (approche simplifiée)
     const { data: visitorData, error: visitorsError } = await supabase
@@ -102,18 +120,24 @@ export const fetchVendorViewStats = async (vendorId: string) => {
       .in('product_id', productIds)
       .not('user_id', 'is', null);
 
-    if (visitorsError) throw visitorsError;
+    if (visitorsError) {
+      console.error('❌ Error counting visitors:', visitorsError);
+      throw visitorsError;
+    }
 
     // Compter les utilisateurs uniques
     const uniqueUsers = visitorData ? [...new Set(visitorData.map(v => v.user_id))].length : 0;
-
-    return {
+    
+    const result = {
       totalViews: totalViews || 0,
       uniqueVisitors: uniqueUsers || 0
     };
+    
+    console.log('✅ View stats result:', result);
+    return result;
 
   } catch (error) {
-    console.error('Error fetching vendor view stats:', error);
+    console.error('💥 Error in fetchVendorViewStats:', error);
     return { totalViews: 0, uniqueVisitors: 0 };
   }
 };
