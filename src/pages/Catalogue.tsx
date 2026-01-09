@@ -84,6 +84,41 @@ const Catalogue = () => {
     gcTime: 1000 * 60 * 30, // 30 minutes in memory
   });
 
+  // Static categories list (matching demoCategories from demo-data.ts)
+  const staticCategories = [
+    { name: 'Téléphones & accessoires', slug: 'telephones' },
+    { name: 'Électroménagers', slug: 'electromenagers' },
+    { name: 'Informatique', slug: 'informatique' },
+    { name: 'Gaming', slug: 'gaming' },
+    { name: 'Industriel & BTP', slug: 'industriel-btp' },
+    { name: '100% Cameroun', slug: 'cameroun' },
+    { name: 'Santé & bien-être', slug: 'sante' },
+    { name: 'Mode', slug: 'mode' },
+    { name: 'Sport', slug: 'sport' }
+  ];
+
+  // Fetch unique category names from products for dynamic filtering
+  const { data: productCategories, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category_name')
+        .not('category_name', 'is', null)
+        .eq('is_active', true)
+        .order('category_name');
+      
+      if (error) throw error;
+      
+      // Extraire les noms uniques
+      const uniqueCategories = [...new Set(data?.map(p => p.category_name).filter(Boolean) || [])]
+        .map(name => ({ name, slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-') }));
+      
+      return uniqueCategories;
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
+  });
+
   const cities = ['Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda'];
   const priceRanges = [
     { value: '0-100000', label: 'Moins de 100 000 FCFA' },
@@ -93,10 +128,46 @@ const Catalogue = () => {
     { value: '1000000+', label: 'Plus de 1 000 000 FCFA' },
   ];
 
-  const sortedProducts = useMemo(() => {
+  const filteredAndSortedProducts = useMemo(() => {
     if (!products) return [];
+    
+    // 1. Filtrer par catégorie
     let result = [...products];
-
+    
+    if (selectedCategory) {
+      result = result.filter(product => {
+        // Filtrer par nom de catégorie directement
+        if (!product.category_name) return false;
+        
+        // Convertir le nom en slug pour comparaison
+        const productSlug = product.category_name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        return productSlug === selectedCategory;
+      });
+    }
+    
+    // 2. Filtrer par prix
+    if (priceRange) {
+      result = result.filter(product => {
+        const price = product.price;
+        
+        switch (priceRange) {
+          case '0-100000':
+            return price < 100000;
+          case '100000-300000':
+            return price >= 100000 && price <= 300000;
+          case '300000-500000':
+            return price >= 300000 && price <= 500000;
+          case '500000-1000000':
+            return price >= 500000 && price <= 1000000;
+          case '1000000+':
+            return price > 1000000;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // 3. Trier les produits
     switch (sortBy) {
       case 'price-asc':
         result.sort((a, b) => a.price - b.price);
@@ -108,8 +179,9 @@ const Catalogue = () => {
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
     }
+    
     return result;
-  }, [products, sortBy]);
+  }, [products, selectedCategory, priceRange, sortBy]);
 
   const handleCategoryChange = (slug: string) => {
     if (slug === selectedCategory) searchParams.delete('category');
@@ -143,9 +215,9 @@ const Catalogue = () => {
       <div>
         <h3 className="font-semibold mb-3">Catégories</h3>
         <div className="space-y-1">
-          {demoCategories.map((cat) => (
+          {staticCategories.map((cat) => (
             <button
-              key={cat.id}
+              key={cat.slug}
               onClick={() => handleCategoryChange(cat.slug)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${selectedCategory === cat.slug
                 ? 'bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20'
@@ -213,7 +285,7 @@ const Catalogue = () => {
                 Notre Catalogue
               </h1>
               <p className="text-muted-foreground mt-1 font-medium">
-                Découvrez {sortedProducts.length} pépites sélectionnées pour vous
+                Découvrez {filteredAndSortedProducts.length} pépites sélectionnées pour vous
               </p>
             </div>
 
@@ -291,13 +363,13 @@ const Catalogue = () => {
                     <div key={i} className="aspect-[4/5] bg-white rounded-2xl animate-pulse shadow-sm" />
                   ))}
                 </div>
-              ) : sortedProducts.length > 0 ? (
+              ) : filteredAndSortedProducts.length > 0 ? (
                 <div className={
                   viewMode === 'grid'
                     ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6'
                     : 'space-y-4'
                 }>
-                  {sortedProducts.map((product) => (
+                  {filteredAndSortedProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       id={product.id}
