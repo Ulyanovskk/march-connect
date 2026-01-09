@@ -40,28 +40,47 @@ const ProductCard = ({
   // No click handler needed - tracking happens in ProductDetail page
   // This keeps the navigation fast and reliable
 
-  const prefetchProduct = () => {
-    queryClient.prefetchQuery({
-      queryKey: ['product', id],
-      queryFn: async () => {
-        const { data, error } = await (supabase as any)
-          .from('products')
-          .select(`
-            *,
-            category:categories (name, slug),
-            vendor:vendors (
-              shop_name,
-              shop_description,
-              created_at
-            )
-          `)
-          .eq('id', id)
-          .single();
-        if (error) throw error;
-        return data;
-      },
-      staleTime: 1000 * 60 * 5,
-    });
+  const prefetchProduct = async () => {
+    try {
+      // Vérifier d'abord si le produit existe
+      const { data: productCheck, error: checkError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', id)
+        .eq('is_active', true)
+        .single();
+
+      if (checkError || !productCheck) {
+        // Ne pas prefetch si le produit n'existe pas
+        return;
+      }
+
+      // Prefetch seulement si le produit existe
+      queryClient.prefetchQuery({
+        queryKey: ['product', id],
+        queryFn: async () => {
+          const { data, error } = await (supabase as any)
+            .from('products')
+            .select(`
+              *,
+              category:categories (name, slug),
+              vendor:vendors (
+                shop_name,
+                shop_description,
+                created_at
+              )
+            `)
+            .eq('id', id)
+            .single();
+          if (error) throw error;
+          return data;
+        },
+        staleTime: 1000 * 60 * 5,
+      });
+    } catch (error) {
+      // Silencieux - on ne veut pas interrompre l'expérience utilisateur
+      console.debug('Prefetch failed for product:', id);
+    }
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {

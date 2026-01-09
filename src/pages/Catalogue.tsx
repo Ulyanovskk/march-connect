@@ -56,17 +56,29 @@ const Catalogue = () => {
       }
 
       console.log(`Found ${data?.length || 0} products`);
-      if (data && data.length > 0) {
-        console.log('First product sample:', {
-          id: data[0].id,
-          name: data[0].name,
-          price: data[0].price,
-          stock: data[0].stock,
-          images: data[0].images?.length || 0
+      
+      // Filtrer les produits valides
+      const validProducts = (data || []).filter(product => 
+        product.id && 
+        product.name && 
+        product.price && 
+        product.images && 
+        product.images.length > 0
+      );
+      
+      console.log(`Valid products: ${validProducts.length}`);
+      
+      if (validProducts.length > 0) {
+        console.log('First valid product sample:', {
+          id: validProducts[0].id,
+          name: validProducts[0].name,
+          price: validProducts[0].price,
+          stock: validProducts[0].stock,
+          images: validProducts[0].images?.length || 0
         });
       }
 
-      return data || [];
+      return validProducts;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes cache
     gcTime: 1000 * 60 * 30, // 30 minutes in memory

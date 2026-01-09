@@ -86,9 +86,33 @@ const ProductDetail = () => {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-        <h2 className="text-xl font-bold">Produit introuvable</h2>
-        <Button onClick={() => navigate('/catalogue')}>Retour au catalogue</Button>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold mb-2">Produit introuvable</h2>
+          <p className="text-muted-foreground mb-6">
+            Le produit que vous recherchez n'existe pas ou a été supprimé.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button 
+              onClick={() => navigate('/catalogue')} 
+              className="px-6"
+            >
+              Retour au catalogue
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.reload()}
+              className="px-6"
+            >
+              Rafraîchir la page
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
