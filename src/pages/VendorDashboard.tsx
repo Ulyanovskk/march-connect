@@ -964,7 +964,7 @@ const VendorDashboard = () => {
                               {getStatusBadge(order.payment_status || order.status)}
                             </td>
                             <td className="px-4 py-4 text-center">
-                              {order.payment_status === 'pending_verification' && (
+                              {order.status === 'pending' && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -974,10 +974,30 @@ const VendorDashboard = () => {
                                   Confirmer paiement
                                 </Button>
                               )}
-                              {order.payment_status === 'paid' && (
+                              {order.status === 'processing' && (
+                                <span className="text-[10px] text-blue-600 font-medium flex items-center justify-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> En préparation
+                                </span>
+                              )}
+                              {order.status === 'completed' && (
+                                <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> Terminé
+                                </span>
+                              )}
+                              {order.status === 'paid' && (
                                 <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
                                   <CheckCircle className="w-3 h-3" /> Payé
                                 </span>
+                              )}
+                              {order.status === 'pending_verification' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-[10px] bg-orange-100 text-orange-600 border-orange-200 hover:bg-orange-600 hover:text-white"
+                                  onClick={() => handleValidatePayment(order.id)}
+                                >
+                                  Vérifier paiement
+                                </Button>
                               )}
                             </td>
                             <td className="px-4 py-4 text-right text-muted-foreground text-xs">
