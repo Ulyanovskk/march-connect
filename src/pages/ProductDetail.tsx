@@ -23,23 +23,44 @@ const ProductDetail = () => {
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      // Récupérer d'abord le produit
+      const { data: productData, error: productError } = await supabase
         .from('products')
-        .select(`
-          *,
-          category:categories (name, slug),
-          vendor:vendors (
-            shop_name,
-            shop_description,
-            has_physical_store,
-            created_at
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (productError) throw productError;
+      if (!productData) return null;
+
+      // Récupérer les données de catégorie si elles existent
+      let categoryData = null;
+      if (productData.category_id) {
+        const { data: cat, error: catError } = await supabase
+          .from('categories')
+          .select('name, slug')
+          .eq('id', productData.category_id)
+          .single();
+        
+        if (!catError) categoryData = cat;
+      }
+
+      // Récupérer les données du vendeur
+      const { data: vendorData, error: vendorError } = await supabase
+        .from('vendors')
+        .select('shop_name, shop_description, created_at')
+        .eq('id', productData.vendor_id)
+        .single();
+      
+      let vendorInfo = null;
+      if (!vendorError) vendorInfo = vendorData;
+
+      // Combiner les données
+      return {
+        ...productData,
+        category: categoryData,
+        vendor: vendorInfo
+      };
     },
     enabled: !!id
   });
@@ -266,9 +287,7 @@ const ProductDetail = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{(product.vendor as any)?.shop_name || 'Boutique Partenaire'}</span>
-                    {(product.vendor as any)?.has_physical_store && (
-                      <BadgeCheck className="w-5 h-5 text-yarid-blue fill-yarid-blue/20" />
-                    )}
+                    <BadgeCheck className="w-5 h-5 text-yarid-blue fill-yarid-blue/20" />
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                     <MapPin className="w-4 h-4" />

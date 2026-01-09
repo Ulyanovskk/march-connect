@@ -48,7 +48,6 @@ const ProductCard = ({
             vendor:vendors (
               shop_name,
               shop_description,
-              has_physical_store,
               created_at
             )
           `)
