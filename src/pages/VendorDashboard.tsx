@@ -295,11 +295,13 @@ const VendorDashboard = () => {
         .from('order_items')
         .select(
           `order_id,
-           product_name,
-           product_image,
            quantity,
            unit_price,
            total_price,
+           product:products (
+             name,
+             images
+           ),
            order:orders (
              id,
              order_number,

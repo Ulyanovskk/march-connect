@@ -79,6 +79,14 @@ const VendorOnboarding = () => {
 
             if (roleError) console.warn('Role update warning:', roleError);
 
+            // SYNCHRONIZE user_metadata with database role
+            await supabase.auth.updateUser({
+                data: { 
+                    role: 'vendor',
+                    onboarding_completed: true
+                }
+            });
+
             toast.success('Votre boutique est prête ! Bienvenue cher partenaire.');
 
             // Redirect to dashboard with page reload to refresh auth state
