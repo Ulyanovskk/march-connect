@@ -189,15 +189,27 @@ const Payment = () => {
       if (orderError) throw orderError;
 
       // 2. Créer les détails des articles (order_items)
-      const orderItems = items.map(item => ({
-        order_id: order.id,
-        product_id: item.id,
-        product_name: item.name,
-        product_image: item.image,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity
-      }));
+      const orderItems = [];
+      
+      for (const item of items) {
+        // Récupérer le vendor_id du produit
+        const { data: productData } = await supabase
+          .from('products')
+          .select('vendor_id')
+          .eq('id', item.id)
+          .single();
+        
+        orderItems.push({
+          order_id: order.id,
+          product_id: item.id,
+          product_name: item.name,
+          product_image: item.image,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+          vendor_id: productData?.vendor_id || null
+        });
+      }
 
       const { error: itemsError } = await supabase
         .from('order_items')
