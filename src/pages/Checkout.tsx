@@ -181,9 +181,17 @@ const Checkout = () => {
                         `- ${item.name} x${item.quantity}: ${formatPrice(item.price * item.quantity)}`
                       ).join('\\n');
                       const message = encodeURIComponent(
-                        `🛒 Demande de confirmation de commande YARID\\n\\n${orderDetails}\\n\\n💰 Total estimé: ${formatPrice(total)}\\n\\nNom complet: [À renseigner]\\nVille: [À renseigner]\\nTéléphone: [À renseigner]`
+                        `🛒 Demande de confirmation de commande YARID
+
+${orderDetails}
+
+💰 Total estimé: ${formatPrice(total)}
+
+Nom complet: [À renseigner]
+Ville: [À renseigner]
+Téléphone: [À renseigner]`
                       );
-                      window.open(`https://wa.me/237600000000?text=${message}`, '_blank');
+                      window.open(`https://wa.me/237695250379?text=${message}`, '_blank');
                     }}
                   >
                     <MessageCircle className="w-5 h-5" />

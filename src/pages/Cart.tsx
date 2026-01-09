@@ -16,9 +16,15 @@ const Cart = () => {
     ).join('\n');
     
     const message = encodeURIComponent(
-      `🛒 Nouvelle commande YARID\n\n${orderDetails}\n\n💰 Total: ${formatPrice(total)}\n\nMerci de me contacter pour finaliser la commande.`
+      `🛒 Nouvelle commande YARID
+
+${orderDetails}
+
+💰 Total: ${formatPrice(total)}
+
+Merci de me contacter pour finaliser la commande.`
     );
-    window.open(`https://wa.me/237600000000?text=${message}`, '_blank');
+    window.open(`https://wa.me/237695250379?text=${message}`, '_blank');
   };
 
   if (items.length === 0) {

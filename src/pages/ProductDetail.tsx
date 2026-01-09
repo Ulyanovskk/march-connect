@@ -140,7 +140,7 @@ const ProductDetail = () => {
 
   const handleWhatsAppContact = () => {
     const message = encodeURIComponent(`Bonjour, je suis intéressé par "${product.name}" à ${formatPrice(product.price)}`);
-    window.open(`https://wa.me/237600000000?text=${message}`, '_blank');
+    window.open(`https://wa.me/237695250379?text=${message}`, '_blank');
   };
 
   return (
