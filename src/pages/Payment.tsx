@@ -149,26 +149,39 @@ const Payment = () => {
 
       const vendorId = product?.vendor_id || null;
 
-      // 1. Créer la commande principale
+      // 1. Créer d'abord l'adresse de livraison
+      const { data: address, error: addressError } = await supabase
+        .from('addresses')
+        .insert({
+          user_id: userId,
+          label: 'Adresse de livraison',
+          full_name: customerInfo.name,
+          phone: customerInfo.phone,
+          address_line1: customerInfo.address,
+          city: customerInfo.city,
+          is_default: false
+        })
+        .select()
+        .single();
+
+      if (addressError) throw addressError;
+
+      // Générer un numéro de commande unique
+      const year = new Date().getFullYear();
+      const randomNumber = Math.floor(100000 + Math.random() * 900000);
+      const orderNumber = `YAR-${year}-${randomNumber}`;
+
+      // 2. Créer la commande principale
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          order_number: orderNumber,
           user_id: userId,
-          vendor_id: vendorId,
+          shipping_address_id: address.id,
           status: 'pending',
-          payment_method: paymentMethod,
-          payment_status: 'pending_verification',
-          payment_reference: transactionRef.trim(),
           subtotal: total,
-          total: total,
           total_amount: total,
-          currency: 'XAF',
-          customer_name: customerInfo.name,
-          customer_email: customerInfo.email || session?.user.email || null,
-          customer_phone: customerInfo.phone,
-          delivery_address: customerInfo.address,
-          delivery_city: customerInfo.city,
-          items: items as any
+          notes: `Paiement par ${paymentMethod}`
         } as any)
         .select()
         .single();
