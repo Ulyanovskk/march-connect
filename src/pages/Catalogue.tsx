@@ -84,15 +84,15 @@ const Catalogue = () => {
     gcTime: 1000 * 60 * 30, // 30 minutes in memory
   });
 
-  // Static categories list (matching demoCategories from demo-data.ts)
+  // Static categories list (matching converted slugs from category names)
   const staticCategories = [
-    { name: 'Téléphones & accessoires', slug: 'telephones' },
+    { name: 'Téléphones & accessoires', slug: 'telephones-accessoires' },
     { name: 'Électroménagers', slug: 'electromenagers' },
     { name: 'Informatique', slug: 'informatique' },
     { name: 'Gaming', slug: 'gaming' },
     { name: 'Industriel & BTP', slug: 'industriel-btp' },
-    { name: '100% Cameroun', slug: 'cameroun' },
-    { name: 'Santé & bien-être', slug: 'sante' },
+    { name: '100% Cameroun', slug: '100-cameroun' },
+    { name: 'Santé & bien-être', slug: 'sante-bien-etre' },
     { name: 'Mode', slug: 'mode' },
     { name: 'Sport', slug: 'sport' }
   ];
@@ -135,13 +135,30 @@ const Catalogue = () => {
     let result = [...products];
     
     if (selectedCategory) {
+      console.log('🔍 Filtering by category:', selectedCategory);
       result = result.filter(product => {
         // Filtrer par nom de catégorie directement
-        if (!product.category_name) return false;
+        if (!product.category_name) {
+          console.log('❌ Product has no category_name:', product.id, product.name);
+          return false;
+        }
         
-        // Convertir le nom en slug pour comparaison
-        const productSlug = product.category_name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        return productSlug === selectedCategory;
+        // Convertir le nom en slug pour comparaison (même logique que generateSlug)
+        const productSlug = product.category_name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')  // Remove accents
+          .replace(/[^a-z0-9]/g, '-')        // Replace non-alphanumeric with -
+          .replace(/-+/g, '-')               // Replace multiple - with single -
+          .replace(/^-|-$/g, '');            // Remove leading/trailing -
+          
+        console.log(`🔄 Product: "${product.category_name}" -> slug: "${productSlug}" | Filter: "${selectedCategory}" | Match: ${productSlug === selectedCategory}`);
+        
+        const matches = productSlug === selectedCategory;
+        if (matches) {
+          console.log('✅ MATCH FOUND!', product.name, product.category_name);
+        }
+        return matches;
       });
     }
     

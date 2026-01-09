@@ -34,6 +34,7 @@ type Product = {
   price: number;
   stock: number | null;
   category_id: string | null;
+  category_name: string | null;
   description: string | null;
   images: string[] | null;
   vendor_id: string;
@@ -183,17 +184,31 @@ const generateSlug = (text: string) => {
   return text
     .toString()
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // Remove accents
     .trim()
-    .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w-]+/g, '')  // Remove all non-word chars
-    .replace(/--+/g, '-');    // Replace multiple - with single -
+    .replace(/\s+/g, '-')              // Replace spaces with -
+    .replace(/[^a-z0-9-]/g, '')        // Remove all non-alphanumeric chars except -
+    .replace(/--+/g, '-')              // Replace multiple - with single -
+    .replace(/^-|-$/g, '');            // Remove leading/trailing -
 };
 
 
 const VendorDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  // Static categories matching those used in Catalogue filters
+  const staticCategories = [
+    { id: '1', name: 'Téléphones & accessoires', slug: 'telephones-accessoires' },
+    { id: '2', name: 'Électroménagers', slug: 'electromenagers' },
+    { id: '3', name: 'Informatique', slug: 'informatique' },
+    { id: '4', name: 'Gaming', slug: 'gaming' },
+    { id: '5', name: 'Industriel & BTP', slug: 'industriel-btp' },
+    { id: '6', name: '100% Cameroun', slug: '100-cameroun' },
+    { id: '7', name: 'Santé & bien-être', slug: 'sante-bien-etre' },
+    { id: '8', name: 'Mode', slug: 'mode' },
+    { id: '9', name: 'Sport', slug: 'sport' }
+  ];
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -256,18 +271,9 @@ const VendorDashboard = () => {
     checkAuthAndFetch();
   }, [navigate]);
 
+  // No need to fetch categories from database - using static categories
   const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name, slug')
-        .eq('is_active', true);
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error: any) {
-      console.error('Error fetching categories:', error.message);
-    }
+    console.log('📋 Using static categories for product creation');
   };
 
   const fetchProducts = async (vendorId: string) => {
@@ -405,8 +411,8 @@ const VendorDashboard = () => {
     try {
       setIsSubmitting(true);
       
-      // Find category UUID from slug
-      const categoryObj = categories.find(c => c.slug === newProduct.category);
+      // Get category name from static categories
+      const categoryName = staticCategories.find(c => c.slug === newProduct.category)?.name || null;
       
       const { data, error } = await supabase
         .from('products')
@@ -415,7 +421,7 @@ const VendorDashboard = () => {
           slug: generateSlug(cleanName),
           price: Number(newProduct.price),
           stock: Number(newProduct.stock) || 0,
-          category_id: categoryObj?.id || null,
+          category_name: categoryName,
           description: cleanDescription,
           images: newProduct.images,
           vendor_id: vendorId,
@@ -467,8 +473,8 @@ const VendorDashboard = () => {
     try {
       setIsSubmitting(true);
       
-      // Find category UUID from slug
-      const categoryObj = categories.find(c => c.slug === editProduct.category);
+      // Get category name from static categories
+      const categoryName = staticCategories.find(c => c.slug === editProduct.category)?.name || null;
       
       const { error } = await supabase
         .from('products')
@@ -477,7 +483,7 @@ const VendorDashboard = () => {
           slug: generateSlug(editProduct.name),
           price: Number(editProduct.price),
           stock: Number(editProduct.stock) || 0,
-          category_id: categoryObj?.id || null,
+          category_name: categoryName,
           description: editProduct.description,
           images: editProduct.images,
           is_active: Number(editProduct.stock) > 0
@@ -580,7 +586,7 @@ const VendorDashboard = () => {
   });
 
   const categoryData = products.reduce((acc: { name: string; value: number }[], product) => {
-    const cat = product.category_id || 'Standard';
+    const cat = product.category_name || 'Standard';
     const existing = acc.find(item => item.name === cat);
     if (existing) {
       existing.value += 1;
@@ -765,7 +771,7 @@ const VendorDashboard = () => {
                             <SelectValue placeholder="Sélectionner une catégorie" />
                           </SelectTrigger>
                           <SelectContent>
-                            {demoCategories.map(cat => (
+                            {staticCategories.map(cat => (
                               <SelectItem key={cat.id} value={cat.slug}>{cat.name}</SelectItem>
                             ))}
                           </SelectContent>
@@ -840,7 +846,7 @@ const VendorDashboard = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {demoCategories.map(cat => (
+                            {staticCategories.map(cat => (
                               <SelectItem key={cat.id} value={cat.slug}>{cat.name}</SelectItem>
                             ))}
                           </SelectContent>
