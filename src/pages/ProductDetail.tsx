@@ -337,10 +337,7 @@ const ProductDetail = () => {
             <div>
               <h3 className="font-semibold mb-3">Description</h3>
               <p className="text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
-              <p className="text-muted-foreground leading-relaxed mt-3">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                {product.description || 'Aucune description disponible pour ce produit.'}
               </p>
             </div>
 
