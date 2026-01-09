@@ -7,6 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useProductViewTracking } from '@/hooks/useProductViewTracking';
 
 interface ProductCardProps {
   id: string;
@@ -35,6 +36,9 @@ const ProductCard = ({
   const queryClient = useQueryClient();
   const discount = getDiscount(price, originalPrice ?? null);
   const isOutOfStock = stock <= 0;
+
+  // No click handler needed - tracking happens in ProductDetail page
+  // This keeps the navigation fast and reliable
 
   const prefetchProduct = () => {
     queryClient.prefetchQuery({

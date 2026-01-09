@@ -26,6 +26,7 @@ import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchVendorViewStats } from '@/hooks/useProductViewTracking';
 // Simplified type definitions to avoid deep type instantiation issues
 type Product = {
   id: string;
@@ -533,13 +534,32 @@ const VendorDashboard = () => {
     }
   };
 
-  // Real stats calculation
+  // Real stats calculation with actual view tracking
+  const [realViews, setRealViews] = useState<number>(0);
+  
   const stats = {
     totalRevenue: orders.reduce((acc, order) => acc + (Number(order.total || 0)), 0),
     totalOrders: orders.length,
-    totalViews: products.reduce((acc, product) => acc + (product.views || 0), 0),
+    totalViews: realViews, // Real view count from database
     activeProducts: products.filter(p => p.is_active).length,
   };
+
+  // Fetch real view statistics
+  useEffect(() => {
+    const loadViewStats = async () => {
+      if (vendorId) {
+        try {
+          const viewStats = await fetchVendorViewStats(vendorId);
+          setRealViews(viewStats.totalViews);
+        } catch (error) {
+          console.log('Could not load view stats:', error);
+          // Keep 0 as fallback
+        }
+      }
+    };
+    
+    loadViewStats();
+  }, [vendorId, products]);
 
   // Simulated data for charts
   const salesHistory = Array.from({ length: 7 }, (_, i) => {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, MessageCircle, BadgeCheck, MapPin, Store, Star, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import ProductReviews from '@/components/product/ProductReviews';
+import { useProductViewTracking } from '@/hooks/useProductViewTracking';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,9 @@ const ProductDetail = () => {
   const { addItem, itemCount } = useCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  // Track product views
+  useProductViewTracking(id || '');
 
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
