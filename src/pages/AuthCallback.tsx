@@ -9,14 +9,51 @@ const AuthCallback = () => {
     useEffect(() => {
         const handleAuth = async () => {
             try {
-                // 1. Get current session
+                // Debug: log full URL and all parameters
+                console.log('Full URL:', window.location.href);
+                console.log('Hash:', window.location.hash);
+                console.log('Search:', window.location.search);
+                
+                // Check URL hash parameters first (Supabase puts params in hash)
+                const hash = window.location.hash.substring(1);
+                const hashParams = new URLSearchParams(hash);
+                
+                // Also check URL search parameters as backup
+                const searchParams = new URLSearchParams(window.location.search);
+                
+                const type = hashParams.get('type') || searchParams.get('type');
+                const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+
+                console.log('Parsed params:', { 
+                    type, 
+                    accessToken,
+                    hashParams: Object.fromEntries(hashParams.entries()),
+                    searchParams: Object.fromEntries(searchParams.entries())
+                });
+
+                // Handle password recovery flow with highest priority
+                if (type === 'recovery') {
+                    console.log('Handling password recovery flow');
+                    toast.success('Vous pouvez réinitialiser votre mot de passe.');
+                    navigate('/reset-password');
+                    return;
+                }
+
+                // Handle signup confirmation
+                if (type === 'signup' && accessToken) {
+                    toast.success('Email confirmé avec succès !');
+                    setTimeout(() => navigate('/login'), 2000);
+                    return;
+                }
+
+                // Check for existing session
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session) {
                     const user = session.user;
                     const pendingRole = localStorage.getItem('pending_role');
 
-                    // 2. Check if user has role in user_roles table
+                    // Check if user has role in user_roles table
                     const { data: userRoles } = await supabase
                         .from('user_roles')
                         .select('role')
@@ -27,7 +64,7 @@ const AuthCallback = () => {
                         ? userRoles[0].role 
                         : (pendingRole || user.user_metadata?.role || 'client');
 
-                    // 3. If we have a pending role from OAuth, set it
+                    // If we have a pending role from OAuth, set it
                     if (pendingRole && (!userRoles || userRoles.length === 0)) {
                         await supabase
                             .from('user_roles')
@@ -44,7 +81,7 @@ const AuthCallback = () => {
                         localStorage.removeItem('pending_role');
                     }
 
-                    // 4. Check if vendor needs vendor profile
+                    // Check if vendor needs vendor profile
                     if (roleToUse === 'vendor') {
                         const { data: vendorProfile } = await supabase
                             .from('vendors')
@@ -59,7 +96,7 @@ const AuthCallback = () => {
                         }
                     }
 
-                    // 5. Check user_metadata for onboarding status
+                    // Check user_metadata for onboarding status
                     const onboardingCompleted = user.user_metadata?.onboarding_completed;
 
                     if (!onboardingCompleted) {
@@ -69,20 +106,6 @@ const AuthCallback = () => {
                         else if (roleToUse === 'vendor') navigate('/vendor/dashboard');
                         else navigate('/shop');
                     }
-                    return;
-                }
-
-                // 6. Fallback for Email Confirmation (legacy/non-session flow)
-                const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                const accessToken = hashParams.get('access_token');
-                const type = hashParams.get('type');
-
-                if (type === 'signup' && accessToken) {
-                    toast.success('Email confirmé avec succès !');
-                    setTimeout(() => navigate('/login'), 2000);
-                } else if (type === 'recovery' && accessToken) {
-                    toast.success('Vous pouvez réinitialiser votre mot de passe.');
-                    navigate('/reset-password');
                 } else {
                     // No session and no obvious confirmation params, go to login
                     navigate('/login');

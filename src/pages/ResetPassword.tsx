@@ -75,11 +75,13 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
+      // Attempt to update the password
       const { error } = await supabase.auth.updateUser({
         password: password,
       });
 
       if (error) {
+        console.error('Password update error:', error);
         toast.error('Erreur : ' + error.message);
         return;
       }
@@ -92,8 +94,8 @@ const ResetPassword = () => {
         navigate('/login');
       }, 3000);
     } catch (error: any) {
-      console.error(error);
-      toast.error('Une erreur est survenue');
+      console.error('Password reset error:', error);
+      toast.error('Une erreur est survenue lors de la réinitialisation du mot de passe');
     } finally {
       setIsLoading(false);
     }
