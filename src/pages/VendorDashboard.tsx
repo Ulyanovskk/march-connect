@@ -371,14 +371,13 @@ const VendorDashboard = () => {
       const { error } = await supabase
         .from('orders')
         .update({
-          payment_status: 'paid',
           status: 'processing'
         })
         .eq('id', orderId);
 
       if (error) throw error;
 
-      toast.success('Paiement confirmé ! La commande est passée en préparation.');
+      toast.success('Commande confirmée ! Passage en préparation.');
       if (vendorId) fetchOrders(vendorId);
     } catch (error: any) {
       toast.error('Erreur lors de la validation: ' + error.message);
