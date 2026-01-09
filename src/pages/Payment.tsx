@@ -188,36 +188,53 @@ const Payment = () => {
 
       if (orderError) throw orderError;
 
-      // 2. Créer les détails des articles (order_items)
+      // 3. Créer les détails des articles (order_items)
       const orderItems = [];
       
       for (const item of items) {
         // Récupérer le vendor_id du produit
-        const { data: productData } = await supabase
+        const { data: productData, error: productError } = await (supabase as any)
           .from('products')
           .select('vendor_id')
           .eq('id', item.id)
           .single();
         
+        if (productError) {
+          console.error(`❌ Erreur récupération vendor_id pour produit ${item.id}:`, productError);
+          toast.error(`Erreur avec le produit ${item.name}: ${productError.message}`);
+          throw new Error(`Impossible de récupérer les informations du produit ${item.name}`);
+        }
+        
+        if (!productData?.vendor_id) {
+          console.error(`❌ Produit ${item.id} n'a pas de vendor_id`);
+          toast.error(`Le produit ${item.name} n'est pas associé à un vendeur`);
+          throw new Error(`Produit ${item.name} invalide: vendor_id manquant`);
+        }
+        
         orderItems.push({
           order_id: order.id,
           product_id: item.id,
-          product_name: item.name,
-          product_image: item.image,
           quantity: item.quantity,
           unit_price: item.price,
           total_price: item.price * item.quantity,
-          vendor_id: productData?.vendor_id || null
+          vendor_id: productData.vendor_id
         });
       }
 
-      const { error: itemsError } = await supabase
+      // Insérer tous les order_items en une seule requête
+      console.log('📦 Insertion des order_items:', orderItems);
+      const { data: insertedItems, error: itemsError } = await (supabase as any)
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItems)
+        .select();
 
       if (itemsError) {
-        console.warn("Erreur order_items (non bloquante):", itemsError);
+        console.error('❌ Erreur création order_items:', itemsError);
+        toast.error(`Erreur création des articles: ${itemsError.message}`);
+        throw new Error(`Impossible de créer les articles de la commande: ${itemsError.message}`);
       }
+      
+      console.log('✅ Order_items créés avec succès:', insertedItems);
 
       toast.success('Commande créée ! Votre paiement sera vérifié sous 24h.');
       clearCart();

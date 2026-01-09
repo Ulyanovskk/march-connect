@@ -291,10 +291,34 @@ const VendorDashboard = () => {
   const fetchOrders = async (vendorId: string) => {
     try {
       // Fetch order_items for this vendor first
-      const { data: items, error: itemsErr } = await supabase
+      const { data: items, error: itemsErr } = await (supabase as any)
         .from('order_items')
-        .select('order_id')
-        .eq('vendor_id', vendorId);
+        .select(
+          `order_id,
+           product_name,
+           product_image,
+           quantity,
+           unit_price,
+           total_price,
+           order:orders (
+             id,
+             order_number,
+             user_id,
+             status,
+             subtotal,
+             total_amount,
+             created_at,
+             shipping_address_id,
+             address:addresses (
+               full_name,
+               phone,
+               address_line1,
+               city
+             )
+           )`
+        )
+        .eq('vendor_id', vendorId)
+        .order('created_at', { foreignTable: 'orders', ascending: false });
 
       if (itemsErr) throw itemsErr;
       if (!items || items.length === 0) {
@@ -302,19 +326,38 @@ const VendorDashboard = () => {
         return;
       }
 
-      // Get unique order IDs
-      const orderIds = [...new Set(items.map(i => i.order_id))];
+      // Transform data to match Order type
+      const transformedOrders = items.map((item: any) => ({
+        id: item.order.id,
+        order_number: item.order.order_number,
+        customer_name: item.order.address?.full_name || 'Client anonyme',
+        customer_phone: item.order.address?.phone || 'Non spécifié',
+        customer_email: null, // Pas disponible dans le schéma
+        delivery_address: item.order.address?.address_line1 || 'Adresse non spécifiée',
+        delivery_city: item.order.address?.city || 'Ville non spécifiée',
+        delivery_fee: 0, // À calculer si nécessaire
+        subtotal: item.order.subtotal,
+        total: item.order.total_amount,
+        payment_status: item.order.status,
+        status: item.order.status,
+        payment_method: 'manual', // À déterminer
+        payment_reference: null, // À récupérer de la table payments
+        items: [item], // Les détails des produits
+        created_at: item.order.created_at,
+        updated_at: item.order.created_at,
+        user_id: item.order.user_id,
+        vendor_id: vendorId,
+        currency: 'XAF',
+        customer_whatsapp: null,
+        delivery_notes: null
+      }));
 
-      // Fetch full order details
-      const { data: ordersData, error: ordersErr } = await supabase
-        .from('orders')
-        .select('*')
-        .in('id', orderIds)
-        .order('created_at', { ascending: false });
+      // Remove duplicates (same order with multiple items)
+      const uniqueOrders = Array.from(
+        new Map(transformedOrders.map((order: any) => [order.id, order])).values()
+      );
 
-      if (ordersErr) throw ordersErr;
-
-      setOrders((ordersData || []) as Order[]);
+      setOrders(uniqueOrders as Order[]);
     } catch (error: any) {
       console.error('Error fetching orders:', error.message);
       // Don't show error toast, just log it
