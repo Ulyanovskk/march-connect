@@ -41,8 +41,13 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
                     .eq('user_id', session.user.id);
 
                 if (userRolesData && userRolesData.length > 0) {
-                    const dbRole = userRolesData[0].role;
+                    // Prioritize 'admin' role if user has multiple roles
+                    const roles = userRolesData.map(r => r.role);
+                    const dbRole = roles.includes('admin') ? 'admin' :
+                        roles.includes('vendor') ? 'vendor' : 'client';
+
                     setUserRole(dbRole);
+                    console.log(`[ACL] User roles: ${roles.join(', ')} | Selected: ${dbRole}`);
 
                     // For vendors, check if vendor profile exists to determine onboarding status
                     if (dbRole === 'vendor') {
@@ -76,7 +81,7 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
                     }
                 } else {
                     console.warn('[ACL] No role in user_roles, using metadata:', roleFromMetadata);
-                    
+
                     // If vendor from metadata, check vendor profile
                     if (roleFromMetadata === 'vendor') {
                         const { data: vendorProfile } = await supabase
@@ -84,7 +89,7 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
                             .select('id')
                             .eq('user_id', session.user.id)
                             .maybeSingle();
-                        
+
                         setOnboardingCompleted(!!vendorProfile);
                         console.log(`[ACL] Vendor from metadata | Has Profile: ${!!vendorProfile}`);
                     } else {

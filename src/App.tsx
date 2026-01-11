@@ -23,6 +23,15 @@ import LegalNotice from "./pages/LegalNotice";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import AdminPayments from "./pages/admin/Payments";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUsers from "./pages/admin/Users";
+import AdminVendors from "./pages/admin/Vendors";
+import AdminOrders from "./pages/admin/Orders";
+import AdminProducts from "./pages/admin/Products";
+import AdminFinance from "./pages/admin/Finance";
+import AdminLogistics from "./pages/admin/Logistics";
+import AdminSupport from "./pages/admin/Support";
+import AdminSettings from "./pages/admin/Settings";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Profile from "./pages/Profile";
 import ClientOnboarding from "./pages/onboarding/ClientOnboarding";
@@ -76,7 +85,18 @@ const App = () => (
             <Route path="/faq" element={<FAQ />} />
 
             {/* Protected Admin Routes */}
+            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/payments" element={<ProtectedRoute requiredRole="admin"><AdminPayments /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/vendors" element={<ProtectedRoute requiredRole="admin"><AdminVendors /></ProtectedRoute>} />
+            <Route path="/admin/shops" element={<ProtectedRoute requiredRole="admin"><AdminVendors /></ProtectedRoute>} />
+            <Route path="/admin/products" element={<ProtectedRoute requiredRole="admin"><AdminProducts /></ProtectedRoute>} />
+            <Route path="/admin/orders" element={<ProtectedRoute requiredRole="admin"><AdminOrders /></ProtectedRoute>} />
+            <Route path="/admin/finance" element={<ProtectedRoute requiredRole="admin"><AdminFinance /></ProtectedRoute>} />
+            <Route path="/admin/logistics" element={<ProtectedRoute requiredRole="admin"><AdminLogistics /></ProtectedRoute>} />
+            <Route path="/admin/support" element={<ProtectedRoute requiredRole="admin"><AdminSupport /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
