@@ -35,7 +35,7 @@ const Profile = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('personal');
-    const [selectedOrderForQR, setSelectedOrderForQR] = useState<any>(null);
+    const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any>(null);
 
     useEffect(() => {
         fetchProfileAndOrders();
@@ -501,12 +501,8 @@ const Profile = () => {
                                                                 variant="outline"
                                                                 className="rounded-xl font-bold gap-2"
                                                                 size="sm"
-                                                                onClick={() => setSelectedOrderForQR(order)}
+                                                                onClick={() => setSelectedOrderForDetails(order)}
                                                             >
-                                                                <QrCode className="w-4 h-4" />
-                                                                QR Code
-                                                            </Button>
-                                                            <Button variant="outline" className="rounded-xl font-bold" size="sm">
                                                                 Détails
                                                             </Button>
                                                             {order.status === 'pending' && (
@@ -574,56 +570,127 @@ const Profile = () => {
 
             <Footer />
 
-            <Dialog open={!!selectedOrderForQR} onOpenChange={() => setSelectedOrderForQR(null)}>
-                <DialogContent className="sm:max-w-md rounded-3xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black text-center">Votre Code de Livraison</DialogTitle>
-                        <DialogDescription className="text-center text-muted-foreground">
-                            Présentez ce code à l'agent YARID lors de la livraison pour confirmer la réception de votre commande <span className="font-bold text-foreground">#{selectedOrderForQR?.order_number}</span>.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border shadow-inner mt-4">
-                        {selectedOrderForQR?.qr_code_secret ? (
-                            <>
-                                <div className="p-4 bg-white rounded-2xl shadow-sm border-4 border-primary/10">
-                                    <QRCodeCanvas
-                                        value={selectedOrderForQR.qr_code_secret}
-                                        size={200}
-                                        level="H"
-                                        includeMargin={true}
-                                        imageSettings={{
-                                            src: "/favicon.ico",
-                                            x: undefined,
-                                            y: undefined,
-                                            height: 40,
-                                            width: 40,
-                                            excavate: true,
-                                        }}
-                                    />
-                                </div>
-                                <p className="mt-6 font-mono font-bold text-lg text-primary tracking-widest bg-primary/5 px-6 py-2 rounded-full border border-primary/10">
-                                    {selectedOrderForQR.order_number}
-                                </p>
-                            </>
-                        ) : (
-                            <div className="text-center py-10">
-                                <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-spin" />
-                                <p className="text-muted-foreground">Génération du code sécurisé...</p>
+            <Dialog open={!!selectedOrderForDetails} onOpenChange={() => setSelectedOrderForDetails(null)}>
+                <DialogContent className="sm:max-w-2xl rounded-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+                    <DialogHeader className="p-6 pb-2 border-b text-center md:text-left">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <DialogTitle className="text-2xl font-black">Détails de la Commande</DialogTitle>
+                                <DialogDescription className="font-medium">Référence #{selectedOrderForDetails?.order_number}</DialogDescription>
                             </div>
-                        )}
+                            <div className="mx-auto md:mx-0">
+                                {selectedOrderForDetails && getStatusBadge(selectedOrderForDetails.status)}
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                        <div className="space-y-8">
+                            {/* Product List */}
+                            <div className="space-y-4">
+                                <h3 className="font-black text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <ShoppingBag className="w-4 h-4" />
+                                    Articles commandés
+                                </h3>
+                                <div className="space-y-3">
+                                    {selectedOrderForDetails?.order_items?.map((item: any) => (
+                                        <div key={item.id} className="flex items-center gap-4 p-4 bg-muted/20 rounded-2xl border border-muted-foreground/5 transition-colors hover:bg-muted/30">
+                                            <div className="h-16 w-16 rounded-xl overflow-hidden bg-white border shrink-0">
+                                                <img
+                                                    src={item.products?.images?.[0] || '/placeholder.png'}
+                                                    alt={item.products?.name}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-sm truncate">{item.products?.name}</p>
+                                                <p className="text-xs text-muted-foreground font-medium">Qté: {item.quantity} × {formatPrice(item.unit_price)}</p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="font-black text-primary text-sm">{formatPrice(item.total_price)}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* QR Code Section - Visible only if not cancelled */}
+                            {selectedOrderForDetails?.status !== 'cancelled' && (
+                                <div className="pt-8 border-t">
+                                    <div className="text-center space-y-4">
+                                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">
+                                            <QrCode className="w-3 h-3" />
+                                            Confirmation de Livraison
+                                        </div>
+                                        <h3 className="font-bold text-lg">Votre Code de Livraison</h3>
+
+                                        <div className="flex flex-col items-center justify-center p-6 bg-white rounded-3xl border-4 border-dashed border-primary/20 max-w-[280px] mx-auto shadow-inner">
+                                            {selectedOrderForDetails?.qr_code_secret ? (
+                                                <>
+                                                    <div className="p-3 bg-white rounded-2xl shadow-sm border border-muted">
+                                                        <QRCodeCanvas
+                                                            value={selectedOrderForDetails.qr_code_secret}
+                                                            size={180}
+                                                            level="H"
+                                                            includeMargin={true}
+                                                            imageSettings={{
+                                                                src: "/favicon.ico",
+                                                                x: undefined,
+                                                                y: undefined,
+                                                                height: 35,
+                                                                width: 35,
+                                                                excavate: true,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <p className="mt-4 font-mono font-black text-lg text-primary tracking-[0.2em] bg-primary/5 px-6 py-1.5 rounded-full border border-primary/10">
+                                                        {selectedOrderForDetails.order_number}
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <div className="text-center py-6">
+                                                    <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-3 animate-spin" />
+                                                    <p className="text-xs text-muted-foreground">Initialisation du code...</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3 text-left max-w-lg mx-auto">
+                                            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                            <p className="text-[11px] text-amber-800 leading-relaxed font-semibold">
+                                                IMPORTANT : Ne présentez ce code à l'agent YARID qu'une fois vos articles vérifiés. Le scan de ce code confirme officiellement la livraison et débloque le paiement.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Financial Summary */}
+                            <div className="pt-6 border-t space-y-3">
+                                <div className="flex justify-between text-sm font-medium text-muted-foreground">
+                                    <span>Montant des articles</span>
+                                    <span>{formatPrice(selectedOrderForDetails?.subtotal || selectedOrderForDetails?.total_amount)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm font-medium text-muted-foreground">
+                                    <span>Frais de livraison</span>
+                                    <span>{formatPrice(0)}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-3 border-t text-xl font-black text-primary">
+                                    <span>Total Payé</span>
+                                    <span>{formatPrice(selectedOrderForDetails?.total_amount || selectedOrderForDetails?.total)}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3 mt-4">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                            Ne partagez ce code avec personne avant d'avoir physiquement reçu et vérifié vos articles. Une fois scanné, la commande sera marquée comme livrée et les fonds débloqués.
-                        </p>
+
+                    <div className="p-6 pt-2 border-t mt-0">
+                        <Button
+                            className="w-full h-14 rounded-2xl font-black text-lg"
+                            onClick={() => setSelectedOrderForDetails(null)}
+                        >
+                            Fermer
+                        </Button>
                     </div>
-                    <Button
-                        className="w-full h-14 rounded-2xl font-black text-lg mt-4"
-                        onClick={() => setSelectedOrderForQR(null)}
-                    >
-                        Fermer
-                    </Button>
                 </DialogContent>
             </Dialog>
         </div>
