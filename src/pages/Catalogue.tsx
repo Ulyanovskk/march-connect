@@ -41,7 +41,7 @@ const Catalogue = () => {
     queryKey: ['products', selectedCategory, selectedCities.join(','), priceRange, searchQuery],
     queryFn: async () => {
       console.log('Fetching products...');
-      
+
       // Requête simple et directe
       const { data, error } = await supabase
         .from('products')
@@ -56,18 +56,18 @@ const Catalogue = () => {
       }
 
       console.log(`Found ${data?.length || 0} products`);
-      
+
       // Filtrer les produits valides
-      const validProducts = (data || []).filter(product => 
-        product.id && 
-        product.name && 
-        product.price && 
-        product.images && 
+      const validProducts = (data || []).filter(product =>
+        product.id &&
+        product.name &&
+        product.price &&
+        product.images &&
         product.images.length > 0
       );
-      
+
       console.log(`Valid products: ${validProducts.length}`);
-      
+
       if (validProducts.length > 0) {
         console.log('First valid product sample:', {
           id: validProducts[0].id,
@@ -107,13 +107,13 @@ const Catalogue = () => {
         .not('category_name', 'is', null)
         .eq('is_active', true)
         .order('category_name');
-      
+
       if (error) throw error;
-      
+
       // Extraire les noms uniques
       const uniqueCategories = [...new Set(data?.map(p => p.category_name).filter(Boolean) || [])]
         .map(name => ({ name, slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-') }));
-      
+
       return uniqueCategories;
     },
     staleTime: 1000 * 60 * 10, // 10 minutes cache
@@ -130,10 +130,10 @@ const Catalogue = () => {
 
   const filteredAndSortedProducts = useMemo(() => {
     if (!products) return [];
-    
+
     // 1. Filtrer par catégorie
     let result = [...products];
-    
+
     if (selectedCategory) {
       console.log('🔍 Filtering by category:', selectedCategory);
       result = result.filter(product => {
@@ -142,7 +142,7 @@ const Catalogue = () => {
           console.log('❌ Product has no category_name:', product.id, product.name);
           return false;
         }
-        
+
         // Convertir le nom en slug pour comparaison (même logique que generateSlug)
         const productSlug = product.category_name
           .toLowerCase()
@@ -151,9 +151,9 @@ const Catalogue = () => {
           .replace(/[^a-z0-9]/g, '-')        // Replace non-alphanumeric with -
           .replace(/-+/g, '-')               // Replace multiple - with single -
           .replace(/^-|-$/g, '');            // Remove leading/trailing -
-          
+
         console.log(`🔄 Product: "${product.category_name}" -> slug: "${productSlug}" | Filter: "${selectedCategory}" | Match: ${productSlug === selectedCategory}`);
-        
+
         const matches = productSlug === selectedCategory;
         if (matches) {
           console.log('✅ MATCH FOUND!', product.name, product.category_name);
@@ -161,12 +161,12 @@ const Catalogue = () => {
         return matches;
       });
     }
-    
+
     // 2. Filtrer par prix
     if (priceRange) {
       result = result.filter(product => {
         const price = product.price;
-        
+
         switch (priceRange) {
           case '0-100000':
             return price < 100000;
@@ -183,7 +183,7 @@ const Catalogue = () => {
         }
       });
     }
-    
+
     // 3. Trier les produits
     switch (sortBy) {
       case 'price-asc':
@@ -196,7 +196,7 @@ const Catalogue = () => {
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
     }
-    
+
     return result;
   }, [products, selectedCategory, priceRange, sortBy]);
 
@@ -395,7 +395,7 @@ const Catalogue = () => {
                       originalPrice={product.original_price}
                       image={product.images?.[0]}
                       vendorName={product.vendor?.shop_name || 'Vendeur Vérifié'}
-                      vendorCity={product.vendor?.shop_city || 'Cameroun'}
+                      vendorCity={product.vendor?.city || 'Cameroun'}
                       isVerified={true}
                       stock={product.stock}
                     />

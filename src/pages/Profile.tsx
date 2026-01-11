@@ -48,7 +48,32 @@ const Profile = () => {
                 .single();
 
             if (profileError) throw profileError;
-            setProfile(profileData);
+
+            // Check for vendor info
+            let vendorData = null;
+            const { data: vData } = await supabase
+                .from('vendors')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .single();
+
+            vendorData = vData;
+
+            // Fetch User Roles to get the actual role
+            const { data: roles } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', session.user.id);
+
+            const userRole = roles && roles.length > 0 ? roles[0].role : 'client';
+
+            setProfile({
+                ...profileData,
+                role: userRole,
+                shop_name: vendorData?.shop_name || '',
+                description: vendorData?.description || '',
+                city: vendorData?.city || profileData?.city || ''
+            });
 
             // Fetch Client Orders
             const { data: ordersData, error: ordersError } = await (supabase as any)
@@ -93,18 +118,34 @@ const Profile = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
-            const { error } = await supabase
+            // Update Profile
+            const { error: profileErr } = await supabase
                 .from('profiles')
                 .update({
                     full_name: profile.full_name,
-                    shop_name: profile.shop_name,
-                    shop_description: profile.shop_description
-                } as any)
+                    city: profile.city
+                })
                 .eq('id', profile.id);
 
-            if (error) throw error;
+            if (profileErr) throw profileErr;
+
+            // Update Vendor if applicable
+            if (profile.role === 'vendor') {
+                const { error: vendorErr } = await supabase
+                    .from('vendors')
+                    .update({
+                        shop_name: profile.shop_name,
+                        description: profile.description,
+                        city: profile.city
+                    })
+                    .eq('user_id', profile.id);
+
+                if (vendorErr) throw vendorErr;
+            }
+
             toast.success('Profil mis à jour avec succès');
         } catch (error: any) {
+            console.error('Update error:', error);
             toast.error('Erreur lors de la mise à jour');
         } finally {
             setIsSaving(false);
@@ -317,9 +358,10 @@ const Profile = () => {
                                                             <div className="relative">
                                                                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                                 <Input
-                                                                    value={profile?.shop_city || ''}
-                                                                    disabled
-                                                                    className="pl-12 h-14 bg-muted/10 border-none rounded-2xl italic opacity-70"
+                                                                    value={profile?.city || ''}
+                                                                    onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                                                                    className="pl-12 h-14 bg-muted/30 border-none rounded-2xl font-medium focus-visible:ring-2 focus-visible:ring-orange-500/20"
+                                                                    placeholder="Ex: Douala"
                                                                 />
                                                             </div>
                                                         </div>
@@ -328,8 +370,8 @@ const Profile = () => {
                                                     <div className="space-y-3">
                                                         <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground">Description de la Boutique</Label>
                                                         <Textarea
-                                                            value={profile?.shop_description || ''}
-                                                            onChange={(e) => setProfile({ ...profile, shop_description: e.target.value })}
+                                                            value={profile?.description || ''}
+                                                            onChange={(e) => setProfile({ ...profile, description: e.target.value })}
                                                             placeholder="Décrivez votre boutique en quelques lignes..."
                                                             className="bg-muted/30 border-none rounded-2xl min-h-[120px] focus-visible:ring-2 focus-visible:ring-orange-500/20"
                                                         />

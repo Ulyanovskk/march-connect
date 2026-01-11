@@ -66,7 +66,7 @@ const ProductCard = ({
               category:categories (name, slug),
               vendor:vendors (
                 shop_name,
-                shop_description,
+                description,
                 created_at
               )
             `)

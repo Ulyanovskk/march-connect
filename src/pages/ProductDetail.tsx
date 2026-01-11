@@ -45,17 +45,17 @@ const ProductDetail = () => {
           .select('name, slug')
           .eq('id', productData.category_id)
           .single();
-        
+
         if (!catError) categoryData = cat;
       }
 
       // Récupérer les données du vendeur
       const { data: vendorData, error: vendorError } = await supabase
         .from('vendors')
-        .select('shop_name, shop_description, created_at')
+        .select('shop_name, description, created_at')
         .eq('id', productData.vendor_id)
         .single();
-      
+
       let vendorInfo = null;
       if (!vendorError) vendorInfo = vendorData;
 
@@ -98,14 +98,14 @@ const ProductDetail = () => {
             Le produit que vous recherchez n'existe pas ou a été supprimé.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button 
-              onClick={() => navigate('/catalogue')} 
+            <Button
+              onClick={() => navigate('/catalogue')}
               className="px-6"
             >
               Retour au catalogue
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => window.location.reload()}
               className="px-6"
             >
