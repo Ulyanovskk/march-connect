@@ -242,8 +242,8 @@ const AdminProducts = () => {
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                                                    {product.image_url ? (
-                                                        <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                                                    {product.images?.[0] ? (
+                                                        <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-5 h-5" /></div>
                                                     )}
