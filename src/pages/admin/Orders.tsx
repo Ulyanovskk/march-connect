@@ -64,6 +64,35 @@ const AdminOrders = () => {
 
     useEffect(() => {
         fetchOrders();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel('admin-orders-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'orders' },
+                (payload: any) => {
+                    if (payload.eventType === 'UPDATE') {
+                        const updated = payload.new;
+                        setOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+
+                        // Update details view if open
+                        setSelectedOrder(current => {
+                            if (current?.id === updated.id) {
+                                return { ...current, ...updated };
+                            }
+                            return current;
+                        });
+                    } else if (payload.eventType === 'INSERT') {
+                        fetchOrders(); // Safest to refetch for inserts to get relations
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const fetchOrders = async () => {
@@ -168,17 +197,28 @@ const AdminOrders = () => {
 
     const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
-            const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+            const { data, error } = await supabase
+                .from('orders')
+                .update({ status: newStatus })
+                .eq('id', orderId)
+                .select(); // Important: Return data to verify update
+
             if (error) throw error;
 
-            // Update local state if selected
-            if (selectedOrder?.id === orderId) {
-                setSelectedOrder({ ...selectedOrder, status: newStatus });
+            if (!data || data.length === 0) {
+                throw new Error("Mise à jour échouée (Permissions ou commande introuvable)");
             }
 
-            toast.success("Statut mis à jour");
-            fetchOrders();
+            // Update local state immediately (Optimistic UI)
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+            }
+
+            toast.success("Statut mis à jour avec succès");
         } catch (error: any) {
+            console.error("Update error:", error);
             toast.error("Erreur mise à jour: " + error.message);
         }
     };
