@@ -15,7 +15,10 @@ import {
     AlertTriangle,
     ToggleLeft,
     ToggleRight,
-    Clock
+    Clock,
+    Plus,
+    Trash2,
+    MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +26,15 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const AdminSettings = () => {
     const [commissions, setCommissions] = useState({
@@ -38,8 +50,18 @@ const AdminSettings = () => {
         newOrdersEmail: true
     });
 
+    // Zone Management State
+    const [showZoneModal, setShowZoneModal] = useState(false);
+    const [zones, setZones] = useState([
+        { id: 1, name: 'Douala', active: true, price: 1500 },
+        { id: 2, name: 'Yaoundé', active: true, price: 2000 },
+        { id: 3, name: 'Bafoussam', active: true, price: 3000 },
+        { id: 4, name: 'Kribi', active: true, price: 3500 },
+    ]);
+    const [newZone, setNewZone] = useState({ name: '', price: '' });
+
     const handleSave = () => {
-        console.log("Saving settings:", { commissions, toggles });
+        console.log("Saving settings:", { commissions, toggles, zones });
         toast.success("Paramètres enregistrés avec succès !");
     };
 
@@ -57,7 +79,28 @@ const AdminSettings = () => {
     };
 
     const handleManageZones = () => {
-        toast.info("Interface de gestion des zones bientôt disponible");
+        setShowZoneModal(true);
+    };
+
+    const handleAddZone = () => {
+        if (!newZone.name || !newZone.price) {
+            toast.error("Veuillez remplir le nom et le prix");
+            return;
+        }
+        const zone = {
+            id: Date.now(),
+            name: newZone.name,
+            active: true,
+            price: Number(newZone.price)
+        };
+        setZones([...zones, zone]);
+        setNewZone({ name: '', price: '' });
+        toast.success("Zone ajoutée");
+    };
+
+    const handleDeleteZone = (id: number) => {
+        setZones(zones.filter(z => z.id !== id));
+        toast.success("Zone supprimée");
     };
 
     return (
@@ -217,7 +260,77 @@ const AdminSettings = () => {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+
+            <Dialog open={showZoneModal} onOpenChange={setShowZoneModal}>
+                <DialogContent className="max-w-2xl bg-white rounded-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
+                            <MapPin className="w-5 h-5 text-primary" />
+                            Gestion des Zones de Livraison
+                        </DialogTitle>
+                        <DialogDescription>
+                            Ajoutez ou modifiez les zones de livraison et leurs tarifs standards.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="flex items-end gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="space-y-1 flex-1">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Nouvelle Zone</Label>
+                                <Input
+                                    placeholder="Ex: Douala Nord"
+                                    value={newZone.name}
+                                    onChange={(e) => setNewZone({ ...newZone, name: e.target.value })}
+                                    className="bg-white"
+                                />
+                            </div>
+                            <div className="space-y-1 w-32">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Prix (FCFA)</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="1500"
+                                    value={newZone.price}
+                                    onChange={(e) => setNewZone({ ...newZone, price: e.target.value })}
+                                    className="bg-white"
+                                />
+                            </div>
+                            <Button onClick={handleAddZone} className="h-10 w-10 p-0 rounded-xl shrink-0">
+                                <Plus className="w-5 h-5" />
+                            </Button>
+                        </div>
+
+                        <div className="border rounded-2xl overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-slate-50">
+                                    <TableRow>
+                                        <TableHead className="font-bold">Zone</TableHead>
+                                        <TableHead className="font-bold text-right">Tarif</TableHead>
+                                        <TableHead className="w-[50px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {zones.map((zone) => (
+                                        <TableRow key={zone.id}>
+                                            <TableCell className="font-medium text-slate-700">{zone.name}</TableCell>
+                                            <TableCell className="text-right font-black text-slate-800">{zone.price} FCFA</TableCell>
+                                            <TableCell>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteZone(zone.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowZoneModal(false)} className="rounded-xl font-bold">Fermer</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </AdminLayout >
     );
 };
 
