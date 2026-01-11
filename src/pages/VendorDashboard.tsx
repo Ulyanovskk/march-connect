@@ -735,29 +735,31 @@ const VendorDashboard = () => {
         </div>
 
         {/* Escrow Information Banner */}
-        <Card className="mb-8 border-none bg-gradient-to-r from-primary/5 to-primary/10 shadow-sm overflow-hidden relative">
-          <div className="absolute right-0 top-0 h-full w-32 bg-primary/5 -skew-x-12 translate-x-12" />
-          <CardContent className="p-6 relative z-10">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-              <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-8 h-8 text-primary" />
+        <Card className="mb-6 md:mb-8 border-none bg-gradient-to-br from-indigo-50 to-blue-50/50 md:bg-gradient-to-r md:from-primary/5 md:to-primary/10 shadow-sm overflow-hidden border border-blue-100/50 md:border-none relative">
+          <div className="hidden md:block absolute right-0 top-0 h-full w-32 bg-primary/5 -skew-x-12 translate-x-12" />
+          <CardContent className="p-5 sm:p-6 md:p-8 relative z-10">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-8 text-center md:text-left">
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 border border-blue-100 md:border-none">
+                <ShieldCheck className="w-7 h-7 md:w-10 md:h-10 text-primary" />
               </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-bold text-foreground">Logistique & Paiements centralisés</h2>
-                <div className="text-sm text-muted-foreground leading-relaxed max-w-4xl">
+              <div className="space-y-3 md:space-y-2 w-full">
+                <h2 className="text-xl md:text-2xl font-black text-indigo-900 md:text-foreground">Logistique & Paiements centralisés</h2>
+                <div className="text-sm text-indigo-700/80 md:text-muted-foreground leading-relaxed">
                   <p>La logistique et la livraison de vos commandes sont <span className="font-bold text-primary">entièrement prises en charge par YARID</span>.
-                    Les paiements sont sécurisés et vous sont transférés automatiquement après :</p>
-                  <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-1 mt-2 font-medium text-foreground/80">
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      La livraison effectuée par nos services
+                    Les paiements sont sécurisés et transférés automatiquement après :</p>
+                  <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-2 mt-3 md:mt-4 font-bold md:font-medium text-indigo-900 md:text-foreground/80">
+                    <li className="flex items-center gap-2 justify-center md:justify-start">
+                      <div className="hidden md:block w-1.5 h-1.5 rounded-full bg-primary" />
+                      <CheckCircle className="md:hidden w-4 h-4 text-primary" />
+                      Livraison effectuée par nos services
                     </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      La validation de conformité par le client
+                    <li className="flex items-center gap-2 justify-center md:justify-start">
+                      <div className="hidden md:block w-1.5 h-1.5 rounded-full bg-primary" />
+                      <CheckCircle className="md:hidden w-4 h-4 text-primary" />
+                      Validation de conformité client
                     </li>
                   </ul>
-                  <p className="mt-2 text-xs italic opacity-80">Ce service complet vous permet de vous concentrer uniquement sur vos produits pendant que nous gérons le reste.</p>
+                  <p className="mt-3 text-[11px] md:text-xs italic opacity-80 hidden md:block">Ce service complet vous permet de vous concentrer uniquement sur vos produits pendant que nous gérons le reste.</p>
                 </div>
               </div>
             </div>
@@ -765,59 +767,51 @@ const VendorDashboard = () => {
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Revenus total</p>
-                  <p className="font-bold text-lg">{formatPrice(stats.totalRevenue)}</p>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card className="border-none shadow-sm md:shadow-md bg-white overflow-hidden group">
+            <CardContent className="p-4 md:p-6 flex items-center gap-4">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <DollarSign className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] md:text-xs font-black md:font-medium uppercase md:capitalize tracking-widest md:tracking-normal text-muted-foreground mb-0.5">Revenus total</p>
+                <p className="font-black md:font-bold text-xl md:text-2xl truncate">{formatPrice(stats.totalRevenue)}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yarid-orange/10 flex items-center justify-center">
-                  <ShoppingCart className="w-5 h-5 text-yarid-orange" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Commandes</p>
-                  <p className="font-bold text-lg">{stats.totalOrders}</p>
-                </div>
+          <Card className="border-none shadow-sm md:shadow-md bg-white overflow-hidden group">
+            <CardContent className="p-4 md:p-6 flex items-center gap-4">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-yarid-orange/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <ShoppingCart className="w-6 h-6 md:w-7 md:h-7 text-yarid-orange" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] md:text-xs font-black md:font-medium uppercase md:capitalize tracking-widest md:tracking-normal text-muted-foreground mb-0.5">Commandes</p>
+                <p className="font-black md:font-bold text-2xl md:text-3xl truncate">{stats.totalOrders}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yarid-blue/10 flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-yarid-blue" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Vues</p>
-                  <p className="font-bold text-lg">{stats.totalViews}</p>
-                </div>
+          <Card className="border-none shadow-sm md:shadow-md bg-white overflow-hidden group">
+            <CardContent className="p-4 md:p-6 flex items-center gap-4">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-yarid-blue/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Eye className="w-6 h-6 md:w-7 md:h-7 text-yarid-blue" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] md:text-xs font-black md:font-medium uppercase md:capitalize tracking-widest md:tracking-normal text-muted-foreground mb-0.5">Vues réelles</p>
+                <p className="font-black md:font-bold text-2xl md:text-3xl truncate">{stats.totalViews}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yarid-green/10 flex items-center justify-center">
-                  <Package className="w-5 h-5 text-yarid-green" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Produits actifs</p>
-                  <p className="font-bold text-lg">{stats.activeProducts}</p>
-                </div>
+          <Card className="border-none shadow-sm md:shadow-md bg-white overflow-hidden group">
+            <CardContent className="p-4 md:p-6 flex items-center gap-4">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-yarid-green/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Package className="w-6 h-6 md:w-7 md:h-7 text-yarid-green" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] md:text-xs font-black md:font-medium uppercase md:capitalize tracking-widest md:tracking-normal text-muted-foreground mb-0.5">Produits en ligne</p>
+                <p className="font-black md:font-bold text-2xl md:text-3xl truncate">{stats.activeProducts}</p>
               </div>
             </CardContent>
           </Card>
@@ -825,16 +819,16 @@ const VendorDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="bg-card shadow-soft">
-            <TabsTrigger value="products" className="gap-2">
+          <TabsList className="bg-white/50 border backdrop-blur-sm p-1 h-auto w-full justify-start overflow-x-auto scrollbar-hide flex-nowrap mb-6 rounded-2xl shadow-sm">
+            <TabsTrigger value="products" className="gap-2 px-6 py-3 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold whitespace-nowrap">
               <Package className="w-4 h-4" />
               Produits
             </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-2">
+            <TabsTrigger value="orders" className="gap-2 px-6 py-3 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold whitespace-nowrap">
               <ShoppingCart className="w-4 h-4" />
               Commandes
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-2">
+            <TabsTrigger value="analytics" className="gap-2 px-6 py-3 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold whitespace-nowrap">
               <BarChart3 className="w-4 h-4" />
               Analytique
             </TabsTrigger>
@@ -1028,41 +1022,68 @@ const VendorDashboard = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {products.map(product => (
-                      <div key={product.id} className="flex items-center gap-4 p-3 bg-muted/50 rounded-xl">
-                        <img
-                          src={product.images?.[0] || '/placeholder.png'}
-                          alt={product.name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium truncate">{product.name}</h4>
-                          <p className="text-sm text-primary font-semibold">{formatPrice(product.price)}</p>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                            <span>Stock: {product.stock}</span>
-                            <span>•</span>
-                            <span>{new Date(product.created_at).toLocaleDateString()}</span>
+                      <div key={product.id} className="group relative bg-white md:bg-muted/30 p-4 rounded-3xl border border-muted md:border-none shadow-sm md:shadow-none hover:shadow-md md:hover:bg-muted/50 transition-all">
+                        <div className="flex flex-col md:flex-row gap-4">
+                          {/* Image Container */}
+                          <div className="relative h-48 md:h-20 w-full md:w-20 rounded-2xl overflow-hidden bg-muted shrink-0 shadow-inner">
+                            <img
+                              src={product.images?.[0] || '/placeholder.png'}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                            />
+                            <div className="absolute top-3 left-3 md:hidden">
+                              {getStatusBadge(product.is_active ? 'active' : 'out_of_stock')}
+                            </div>
                           </div>
-                        </div>
-                        {getStatusBadge(product.is_active ? 'active' : 'out_of_stock')}
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteProduct(product.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+
+                          {/* Info Container */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center space-y-3 md:space-y-1">
+                            <div className="flex items-start md:items-center justify-between gap-3">
+                              <h4 className="font-black md:font-bold text-lg md:text-base text-foreground leading-tight truncate">{product.name}</h4>
+                              <div className="hidden md:block">
+                                {getStatusBadge(product.is_active ? 'active' : 'out_of_stock')}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                              <span className="text-2xl md:text-lg font-black text-primary tracking-tight">{formatPrice(product.price)}</span>
+                              <div className="flex items-center gap-1.5 px-3 py-1 bg-muted rounded-full text-xs font-bold md:font-medium text-muted-foreground">
+                                <Package className="w-3.5 h-3.5" />
+                                <span className="md:hidden">Stock: </span>{product.stock}
+                              </div>
+                              <span className="hidden md:inline text-[10px] text-muted-foreground opacity-60 uppercase tracking-widest">
+                                Ajouté le {new Date(product.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+
+                            <p className="md:hidden text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em]">
+                              Ajouté le {new Date(product.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          {/* Actions Container */}
+                          <div className="flex md:flex-col items-center gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-dashed">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="flex-1 md:w-10 md:h-10 h-12 rounded-xl border-muted-foreground/10 hover:bg-primary/5 hover:text-primary transition-all font-bold md:font-normal"
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              <Edit className="w-4 h-4 md:mr-0 mr-2" />
+                              <span className="md:hidden">Modifier</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="flex-1 md:w-10 md:h-10 h-12 rounded-xl text-red-500 border-red-50 hover:bg-red-50 transition-all font-bold md:font-normal"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
+                              <Trash2 className="w-4 h-4 md:mr-0 mr-2" />
+                              <span className="md:hidden">Supprimer</span>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1091,7 +1112,7 @@ const VendorDashboard = () => {
                     <p className="text-muted-foreground">Pas encore de commandes pour vos produits.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 rounded-lg">
                         <tr>
