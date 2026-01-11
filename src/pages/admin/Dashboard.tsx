@@ -34,11 +34,11 @@ import { fr } from 'date-fns/locale';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
-        users: 0,
-        vendors: 0,
+        users: { value: 0, trend: 0 },
+        vendors: { value: 0, trend: 0 },
         products: 0,
-        orders: 0,
-        totalRevenue: 0,
+        orders: { value: 0, trend: 0 },
+        totalRevenue: { value: 0, trend: 0 },
         pendingEscrow: 0,
         deliveryPending: 0,
         problems: 0
@@ -91,12 +91,74 @@ const AdminDashboard = () => {
                 const deliveryPending = ordersData?.filter(o => o.status === 'processing' || o.status === 'shipped').length || 0;
                 const problems = ordersData?.filter(o => o.status === 'cancelled' || o.payment_status === 'failed').length || 0;
 
+                // Calculate Trends (Last 30 days vs Previous 30 days)
+                const now = new Date();
+                const thirtyDaysAgo = subDays(now, 30);
+                const sixtyDaysAgo = subDays(now, 60);
+
+                // Helper to get count by date range
+                const getCountInRange = async (table: string, startDate: Date, endDate: Date) => {
+                    const { count } = await supabase
+                        .from(table)
+                        .select('*', { count: 'exact', head: true })
+                        .gte('created_at', startDate.toISOString())
+                        .lt('created_at', endDate.toISOString());
+                    return count || 0;
+                };
+
+                // Fetch Trend Data
+                const [
+                    newUsersCurrent, newUsersPrevious,
+                    newVendorsCurrent, newVendorsPrevious
+                ] = await Promise.all([
+                    getCountInRange('profiles', thirtyDaysAgo, now),
+                    getCountInRange('profiles', sixtyDaysAgo, thirtyDaysAgo),
+                    getCountInRange('vendors', thirtyDaysAgo, now),
+                    getCountInRange('vendors', sixtyDaysAgo, thirtyDaysAgo)
+                ]);
+
+                // Calculate Order & Revenue Trends from local data (ordersData)
+                // Note: limits analysis to the fetched 5000 orders, which is sufficient for recent trends
+                const currentPeriodOrders = ordersData?.filter(o =>
+                    new Date(o.created_at) >= thirtyDaysAgo && new Date(o.created_at) < now
+                ) || [];
+                const previousPeriodOrders = ordersData?.filter(o =>
+                    new Date(o.created_at) >= sixtyDaysAgo && new Date(o.created_at) < thirtyDaysAgo
+                ) || [];
+
+                const calculateRevenue = (orders: any[]) => orders.reduce((acc, order) => {
+                    const isValidSale = order.payment_status === 'paid' &&
+                        order.status !== 'cancelled' &&
+                        order.status !== 'returned';
+                    return isValidSale ? acc + (Number(order.total_amount) || Number(order.total) || 0) : acc;
+                }, 0);
+
+                const currentRevenue = calculateRevenue(currentPeriodOrders);
+                const previousRevenue = calculateRevenue(previousPeriodOrders);
+
+                const calculateTrend = (current: number, previous: number) => {
+                    if (previous === 0) return current > 0 ? 100 : 0;
+                    return ((current - previous) / previous) * 100;
+                };
+
                 setStats({
-                    users: userCount || 0,
-                    vendors: vendorCount || 0,
+                    users: {
+                        value: userCount || 0,
+                        trend: calculateTrend(newUsersCurrent, newUsersPrevious)
+                    },
+                    vendors: {
+                        value: vendorCount || 0,
+                        trend: calculateTrend(newVendorsCurrent, newVendorsPrevious)
+                    },
                     products: productCount || 0,
-                    orders: ordersData?.length || 0,
-                    totalRevenue: totalRev,
+                    orders: {
+                        value: ordersData?.length || 0,
+                        trend: calculateTrend(currentPeriodOrders.length, previousPeriodOrders.length)
+                    },
+                    totalRevenue: {
+                        value: totalRev,
+                        trend: calculateTrend(currentRevenue, previousRevenue)
+                    },
                     pendingEscrow: pendingEscrow,
                     deliveryPending: deliveryPending,
                     problems: problems
@@ -131,42 +193,43 @@ const AdminDashboard = () => {
     const statCards = [
         {
             label: 'Clients',
-            value: stats.users,
+            value: stats.users.value,
             icon: Users,
             color: 'bg-blue-500',
-            trend: '+12%',
-            isUp: true
+            trend: `${stats.users.trend > 0 ? '+' : ''}${stats.users.trend.toFixed(1)}%`,
+            isUp: stats.users.trend >= 0
         },
         {
             label: 'Vendeurs',
-            value: stats.vendors,
+            value: stats.vendors.value,
             icon: Store,
             color: 'bg-indigo-500',
-            trend: '+5%',
-            isUp: true
+            trend: `${stats.vendors.trend > 0 ? '+' : ''}${stats.vendors.trend.toFixed(1)}%`,
+            isUp: stats.vendors.trend >= 0
         },
         {
             label: 'Commandes',
-            value: stats.orders,
+            value: stats.orders.value,
             icon: ShoppingCart,
             color: 'bg-orange-500',
-            trend: '+18%',
-            isUp: true
+            trend: `${stats.orders.trend > 0 ? '+' : ''}${stats.orders.trend.toFixed(1)}%`,
+            isUp: stats.orders.trend >= 0
         },
         {
             label: 'Revenus Total',
-            value: formatPrice(stats.totalRevenue),
+            value: formatPrice(stats.totalRevenue.value),
             icon: TrendingUp,
             color: 'bg-emerald-500',
-            trend: '+24%',
-            isUp: true
+            trend: `${stats.totalRevenue.trend > 0 ? '+' : ''}${stats.totalRevenue.trend.toFixed(1)}%`,
+            isUp: stats.totalRevenue.trend >= 0
         },
     ];
 
     const financialCards = [
         { label: 'En Escrow', value: formatPrice(stats.pendingEscrow), icon: Wallet, status: 'warning' },
         { label: 'Livraisons en cours', value: stats.deliveryPending, icon: Clock, status: 'info' },
-        { label: 'Livrées', value: stats.orders - stats.deliveryPending - stats.problems, icon: CheckCircle2, status: 'success' },
+        { label: 'Livraisons en cours', value: stats.deliveryPending, icon: Clock, status: 'info' },
+        { label: 'Livrées', value: (stats.orders.value || 0) - stats.deliveryPending - stats.problems, icon: CheckCircle2, status: 'success' },
         { label: 'Litiges/Problèmes', value: stats.problems, icon: AlertCircle, status: 'danger' },
     ];
 

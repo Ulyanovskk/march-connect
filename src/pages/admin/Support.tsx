@@ -40,6 +40,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/demo-data';
 
 const AdminSupport = () => {
     const [tickets, setTickets] = useState<any[]>([]); // Mock or real if table exists
@@ -53,20 +54,84 @@ const AdminSupport = () => {
     const fetchSupportData = async () => {
         try {
             setLoading(true);
-            // In a real app, you'd fetch from 'support_tickets' or 'disputes' table
-            // For now, we simulate with a mix of data or check if table exists
 
-            const mockTickets = [
-                { id: 'TIC-001', subject: 'Problème de paiement', user: 'Jean Dupont', status: 'open', priority: 'high', date: new Date().toISOString() },
-                { id: 'DIS-042', subject: 'Produit non conforme', user: 'Marie M.', status: 'resolved', priority: 'medium', date: subDays(new Date(), 2).toISOString() },
-                { id: 'TIC-003', subject: 'Demande de certification', user: 'Shop Africa', status: 'pending', priority: 'low', date: subDays(new Date(), 1).toISOString() },
-                { id: 'TIC-004', subject: 'Retard de livraison', user: 'Paul K.', status: 'open', priority: 'medium', date: subDays(new Date(), 3).toISOString() },
-            ];
+            // 1. Fetch Orders with issues (simulating tickets)
+            // Issues: Payment failed, Returned, Cancelled (as historical tickets)
+            const { data: problemOrders, error: ordersError } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('status', 'cancelled')
+                .order('created_at', { ascending: false })
+                .limit(50);
 
-            setTickets(mockTickets);
+            if (ordersError) throw ordersError;
+
+            // 2. Fetch Unverified Vendors (as validation tickets)
+            const { data: unverifiedVendors, error: vendorsError } = await supabase
+                .from('vendors')
+                .select('*')
+                .eq('is_verified', false)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (vendorsError) throw vendorsError;
+
+            // 3. Map to Ticket Interface
+            const orderTickets = problemOrders?.map(order => {
+                let subject = "Problème Inconnu";
+                let status = "open";
+                let priority = "medium";
+
+                // Safely access properties even if types definition is slightly off vs DB
+                const paymentStatus = (order as any).payment_status;
+
+                if (paymentStatus === 'failed') {
+                    subject = "Paiement Échoué";
+                    priority = "high";
+                } else if (order.status === 'returned') {
+                    subject = "Retour Produit";
+                    priority = "high";
+                } else if (order.status === 'cancelled') {
+                    subject = "Commande Annulée";
+                    status = "resolved";
+                    priority = "low";
+                }
+
+                if (order.total > 100000) priority = "high";
+
+                return {
+                    id: order.id,
+                    type: 'order',
+                    subject: `${subject} (${formatPrice(order.total || 0)})`,
+                    user: order.customer_name || 'Client Inconnu',
+                    status: status,
+                    priority: priority,
+                    date: order.created_at,
+                    raw: order
+                };
+            }) || [];
+
+            const vendorTickets = unverifiedVendors?.map(vendor => ({
+                id: vendor.id,
+                type: 'vendor',
+                subject: `Validation Vendeur: ${vendor.shop_name}`,
+                user: vendor.shop_name,
+                status: 'open', // Pending verification
+                priority: 'medium',
+                date: vendor.created_at,
+                raw: vendor
+            })) || [];
+
+            // Combine and sort
+            const allTickets = [...vendorTickets, ...orderTickets].sort((a, b) =>
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+
+            setTickets(allTickets);
 
         } catch (error: any) {
-            toast.error("Erreur chargement support");
+            console.error("Error fetching support data", error);
+            toast.error("Erreur chargement support: " + error.message);
         } finally {
             setLoading(false);
         }
@@ -134,16 +199,22 @@ const AdminSupport = () => {
                 {/* Support Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft border-l-4 border-l-red-500">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Litiges à traiter</p>
-                        <h4 className="text-2xl font-black text-slate-800">12</h4>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Litiges / Problèmes</p>
+                        <h4 className="text-2xl font-black text-slate-800">
+                            {tickets.filter(t => t.priority === 'high' && t.status === 'open').length}
+                        </h4>
                     </div>
                     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft border-l-4 border-l-amber-500">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">En attente réponse</p>
-                        <h4 className="text-2xl font-black text-slate-800">5</h4>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">En attente (Vendeurs)</p>
+                        <h4 className="text-2xl font-black text-slate-800">
+                            {tickets.filter(t => t.type === 'vendor' && t.status === 'open').length}
+                        </h4>
                     </div>
                     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft border-l-4 border-l-emerald-500">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Résolus (ce mois)</p>
-                        <h4 className="text-2xl font-black text-slate-800">128</h4>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Résolus / Archivés</p>
+                        <h4 className="text-2xl font-black text-slate-800">
+                            {tickets.filter(t => t.status === 'resolved').length}
+                        </h4>
                     </div>
                 </div>
 
@@ -184,7 +255,9 @@ const AdminSupport = () => {
                                 ) : filteredTickets.map((ticket) => (
                                     <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors border-slate-50 group">
                                         <TableCell>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0.5">{ticket.id}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0.5" title={ticket.id}>
+                                                {ticket.id.substring(0, 8)}...
+                                            </p>
                                             <p className="text-sm font-bold text-slate-800">{ticket.subject}</p>
                                         </TableCell>
                                         <TableCell>
