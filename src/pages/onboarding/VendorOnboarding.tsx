@@ -38,6 +38,19 @@ const VendorOnboarding = () => {
                 return;
             }
 
+            // Check if vendor already exists for this user
+            const { data: existingVendor } = await supabase
+                .from('vendors')
+                .select('id')
+                .eq('user_id', session.user.id)
+                .single();
+
+            if (existingVendor) {
+                toast.info('Vous avez déjà une boutique configurée.');
+                window.location.href = '/vendor/dashboard';
+                return;
+            }
+
             // Get user profile data
             const { data: profile } = await supabase
                 .from('profiles')
@@ -46,11 +59,14 @@ const VendorOnboarding = () => {
                 .single();
 
             // Generate slug from shop name
-            const slug = formData.shop_name
+            const baseSlug = formData.shop_name
                 .toLowerCase()
                 .trim()
                 .replace(/\s+/g, '-')
                 .replace(/[^\w-]+/g, '');
+
+            // Append short random string for uniqueness
+            const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
 
             // Create vendor entry
             const { error: vendorError } = await supabase
@@ -81,7 +97,7 @@ const VendorOnboarding = () => {
 
             // SYNCHRONIZE user_metadata with database role
             await supabase.auth.updateUser({
-                data: { 
+                data: {
                     role: 'vendor',
                     onboarding_completed: true
                 }
