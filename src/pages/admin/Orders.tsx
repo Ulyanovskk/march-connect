@@ -52,6 +52,13 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { QRCodeCanvas } from 'qrcode.react';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const AdminOrders = () => {
     const [orders, setOrders] = useState<any[]>([]);
@@ -184,12 +191,15 @@ const AdminOrders = () => {
 
     const getPaymentStatusBadge = (status: string) => {
         switch (status) {
+            case 'completed':
             case 'paid':
-                return <Badge className="bg-emerald-100 text-emerald-700 border-none font-black text-[9px] px-1.5 uppercase tracking-wider">Payé</Badge>;
+                return <Badge className="bg-emerald-100 text-emerald-700 border-none font-black text-[9px] px-1.5 uppercase tracking-wider">Payé (Escrow)</Badge>;
             case 'pending':
                 return <Badge className="bg-amber-100 text-amber-700 border-none font-black text-[9px] px-1.5 uppercase tracking-wider">Attente</Badge>;
             case 'failed':
                 return <Badge className="bg-red-100 text-red-700 border-none font-black text-[9px] px-1.5 uppercase tracking-wider">Échec</Badge>;
+            case 'refunded':
+                return <Badge className="bg-slate-100 text-slate-700 border-none font-black text-[9px] px-1.5 uppercase tracking-wider">Remboursé</Badge>;
             default:
                 return <Badge className="bg-slate-100 text-slate-700 border-none font-black text-[9px] px-1.5 uppercase tracking-wider">{status}</Badge>;
         }
@@ -197,11 +207,17 @@ const AdminOrders = () => {
 
     const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
+            const updates: any = { status: newStatus };
+            // Auto update payment status if delivered
+            if (newStatus === 'delivered') {
+                // Logic handled by handleForceRelease usually, but we keep simple here
+            }
+
             const { data, error } = await supabase
                 .from('orders')
-                .update({ status: newStatus })
+                .update(updates)
                 .eq('id', orderId)
-                .select(); // Important: Return data to verify update
+                .select();
 
             if (error) throw error;
 
@@ -210,16 +226,43 @@ const AdminOrders = () => {
             }
 
             // Update local state immediately (Optimistic UI)
-            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
 
             if (selectedOrder?.id === orderId) {
-                setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+                setSelectedOrder(prev => ({ ...prev, ...updates }));
             }
 
             toast.success("Statut mis à jour avec succès");
         } catch (error: any) {
             console.error("Update error:", error);
             toast.error("Erreur mise à jour: " + error.message);
+        }
+    };
+
+    const handleUpdatePaymentStatus = async (orderId: string, newStatus: string) => {
+        if (!confirm(`Voulez-vous changer le statut du paiement en : ${newStatus} ?`)) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('orders')
+                .update({ payment_status: newStatus })
+                .eq('id', orderId)
+                .select();
+
+            if (error) throw error;
+
+            if (!data || data.length === 0) throw new Error("Mise à jour échouée");
+
+            // Optimistic Update
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: newStatus } : o));
+
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder(prev => ({ ...prev, payment_status: newStatus }));
+            }
+
+            toast.success("Statut de paiement mis à jour");
+        } catch (error: any) {
+            toast.error("Erreur paiement: " + error.message);
         }
     };
 
@@ -424,7 +467,7 @@ const AdminOrders = () => {
             {/* Order Details Dialog */}
             {selectedOrder && (
                 <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -441,33 +484,100 @@ const AdminOrders = () => {
                         </DialogHeader>
 
                         <div className="space-y-6 py-4">
-                            {/* Actions Rapides */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                <Button
-                                    className="bg-blue-600 hover:bg-blue-700 h-12 rounded-xl text-xs font-bold"
-                                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'processing')}
-                                >
-                                    <Clock className="w-3.5 h-3.5 mr-2" /> Préparation
-                                </Button>
-                                <Button
-                                    className="bg-purple-600 hover:bg-purple-700 h-12 rounded-xl text-xs font-bold"
-                                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'shipped')}
-                                >
-                                    <Truck className="w-3.5 h-3.5 mr-2" /> Expédier
-                                </Button>
-                                <Button
-                                    className="bg-emerald-600 hover:bg-emerald-700 h-12 rounded-xl text-xs font-bold"
-                                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'delivered')}
-                                >
-                                    <CheckCircle2 className="w-3.5 h-3.5 mr-2" /> Livrer
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100 h-12 rounded-xl text-xs font-bold"
-                                    onClick={() => handleCancelOrder(selectedOrder.id)}
-                                >
-                                    <Ban className="w-3.5 h-3.5 mr-2" /> Annuler
-                                </Button>
+                            {/* Section 1: Actions Critiques (Paiement & Statut) */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {/* Vérification Paiement */}
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                    <h3 className="font-bold flex items-center gap-2 mb-3 text-slate-800">
+                                        <Wallet className="w-4 h-4 text-primary" /> Vérification Paiement
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
+                                                onClick={() => handleUpdatePaymentStatus(selectedOrder.id, 'completed')}
+                                                disabled={selectedOrder.payment_status === 'completed' || selectedOrder.payment_status === 'paid'}
+                                            >
+                                                Accepter ✅
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl"
+                                                onClick={() => handleUpdatePaymentStatus(selectedOrder.id, 'pending')}
+                                                disabled={selectedOrder.payment_status === 'pending'}
+                                            >
+                                                Attente ⏳
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl"
+                                                onClick={() => handleUpdatePaymentStatus(selectedOrder.id, 'failed')}
+                                                disabled={selectedOrder.payment_status === 'failed'}
+                                            >
+                                                Refuser ❌
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-slate-500 leading-tight">
+                                            * Confirmer le paiement place les fonds en <strong>Escrow</strong> et débloque la préparation.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* QR Code & Logistique */}
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="font-bold flex items-center gap-2 mb-1 text-slate-800">
+                                            <ShieldCheck className="w-4 h-4 text-primary" /> Sécurité & Logistique
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mb-3 max-w-[200px]">
+                                            Ce QR Code doit être collé sur le colis pour la confirmation de livraison.
+                                        </p>
+                                        <Button size="sm" variant="outline" className="font-bold rounded-xl text-xs h-8" onClick={() => window.print()}>
+                                            <FileText className="w-3 h-3 mr-2" /> Imprimer Étiquette
+                                        </Button>
+                                    </div>
+                                    <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 shrink-0">
+                                        <QRCodeCanvas value={`ORDER:${selectedOrder.id}`} size={80} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Section 2: Actions Logistiques */}
+                            <div className="space-y-3">
+                                <h3 className="font-bold text-sm text-slate-500 uppercase tracking-widest">Flux Logistique</h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <Button
+                                        className="bg-blue-600 hover:bg-blue-700 h-12 rounded-xl text-xs font-bold"
+                                        onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'processing')}
+                                        disabled={selectedOrder.status === 'processing' || selectedOrder.payment_status !== 'completed' && selectedOrder.payment_status !== 'paid'}
+                                    >
+                                        <Clock className="w-3.5 h-3.5 mr-2" /> Préparation
+                                    </Button>
+                                    <Button
+                                        className="bg-purple-600 hover:bg-purple-700 h-12 rounded-xl text-xs font-bold"
+                                        onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'shipped')}
+                                        disabled={selectedOrder.status === 'shipped'}
+                                    >
+                                        <Truck className="w-3.5 h-3.5 mr-2" /> Expédier
+                                    </Button>
+                                    <Button
+                                        className="bg-emerald-600 hover:bg-emerald-700 h-12 rounded-xl text-xs font-bold"
+                                        onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'delivered')}
+                                        disabled={selectedOrder.status === 'delivered'}
+                                    >
+                                        <CheckCircle2 className="w-3.5 h-3.5 mr-2" /> Livrer (Scan Reçu)
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100 h-12 rounded-xl text-xs font-bold"
+                                        onClick={() => handleCancelOrder(selectedOrder.id)}
+                                    >
+                                        <Ban className="w-3.5 h-3.5 mr-2" /> Annuler
+                                    </Button>
+                                </div>
                             </div>
 
                             <Separator />

@@ -76,25 +76,37 @@ const AdminFinance = () => {
 
             // Calculate Stats only on valid sales (Paid & Active)
             const validSales = mergedTransactions.filter(o =>
-                o.payment_status === 'paid' && o.status !== 'cancelled' && o.status !== 'returned'
+                (o.payment_status === 'paid' || o.payment_status === 'completed') &&
+                o.status !== 'cancelled' &&
+                o.status !== 'returned'
             );
 
-            const totalProc = validSales.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+            const totalProc = validSales.reduce((acc, o) => acc + (Number(o.total_amount) || Number(o.total) || 0), 0);
 
             const escrow = validSales
                 .filter(o => o.status !== 'delivered')
-                .reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+                .reduce((acc, o) => acc + (Number(o.total_amount) || Number(o.total) || 0), 0);
 
             // Platform Revenue = Sum of commissions on valid sales
             const platformRev = validSales.reduce((acc, o) => {
-                const amount = Number(o.total) || 0;
+                const amount = Number(o.total_amount) || Number(o.total) || 0;
                 return acc + (amount * o.commissionRate);
             }, 0);
+
+            // Revenue Ready for Payout = Net Vendor Amount for DELIVERED orders
+            // Formula: Sum(Total - Commission) where status === 'delivered'
+            const payoutReady = validSales
+                .filter(o => o.status === 'delivered')
+                .reduce((acc, o) => {
+                    const amount = Number(o.total_amount) || Number(o.total) || 0;
+                    const comm = amount * o.commissionRate;
+                    return acc + (amount - comm);
+                }, 0);
 
             setStats({
                 totalProcessed: totalProc,
                 inEscrow: escrow,
-                payoutReady: totalProc - escrow - platformRev,
+                payoutReady: payoutReady,
                 platformRevenue: platformRev
             });
 
@@ -278,7 +290,7 @@ const AdminFinance = () => {
                                                         <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] px-2 py-0.5 flex items-center gap-1 w-fit">
                                                             <CheckCircle2 className="w-3 h-3" /> DÉBLOQUÉ
                                                         </Badge>
-                                                    ) : (tr.payment_status === 'paid' || (tr as any).payment_status === 'paid') ? (
+                                                    ) : (tr.payment_status === 'paid' || tr.payment_status === 'completed') ? (
                                                         <Badge className="bg-orange-50 text-orange-600 border-none font-black text-[9px] px-2 py-0.5 flex items-center gap-1 w-fit">
                                                             <Clock className="w-3 h-3" /> SÉCURISÉ
                                                         </Badge>
