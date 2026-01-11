@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.create-manual-order]
 verify_jwt = false
+
+[auth]
+pwned_password_protection_enabled = true
