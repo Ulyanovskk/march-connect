@@ -61,18 +61,35 @@ const AdminFinance = () => {
 
             const { data: vendorsData, error: vendorsError } = await supabase
                 .from('vendors')
-                .select('id, shop_name');
+                .select('id, shop_name, commission_rate');
 
-            const mergedTransactions = ordersData?.map(order => ({
-                ...order,
-                vendors: vendorsData?.find(v => v.id === order.vendor_id) || null
-            })) || [];
+            const mergedTransactions = ordersData?.map(order => {
+                const vendor = vendorsData?.find(v => v.id === order.vendor_id);
+                // Use vendor specific rate or default to 10% (0.10)
+                const rate = vendor?.commission_rate ? vendor.commission_rate / 100 : 0.10;
+                return {
+                    ...order,
+                    vendors: vendor || null,
+                    commissionRate: rate
+                };
+            }) || [];
 
-            const totalProc = mergedTransactions.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
-            const escrow = mergedTransactions.filter(o => o.payment_status === 'paid' && o.status !== 'delivered')
+            // Calculate Stats only on valid sales (Paid & Active)
+            const validSales = mergedTransactions.filter(o =>
+                o.payment_status === 'paid' && o.status !== 'cancelled' && o.status !== 'returned'
+            );
+
+            const totalProc = validSales.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+
+            const escrow = validSales
+                .filter(o => o.status !== 'delivered')
                 .reduce((acc, o) => acc + (Number(o.total) || 0), 0);
 
-            const platformRev = totalProc * 0.1;
+            // Platform Revenue = Sum of commissions on valid sales
+            const platformRev = validSales.reduce((acc, o) => {
+                const amount = Number(o.total) || 0;
+                return acc + (amount * o.commissionRate);
+            }, 0);
 
             setStats({
                 totalProcessed: totalProc,
@@ -83,6 +100,7 @@ const AdminFinance = () => {
 
             setTransactions(mergedTransactions);
         } catch (error: any) {
+            console.error("Finance fetch error:", error);
             toast.error("Erreur de chargement des données financières");
         } finally {
             setLoading(false);
@@ -98,15 +116,18 @@ const AdminFinance = () => {
 
     const handleExportCSV = () => {
         const headers = ["ID", "Date", "Boutique", "Montant Brut", "Commission", "Net Vendeur", "Statut"];
-        const rows = transactions.map(tr => [
-            tr.id,
-            format(new Date(tr.created_at), 'yyyy-MM-dd'),
-            tr.vendors?.shop_name || 'System',
-            tr.total,
-            tr.total * 0.1,
-            tr.total * 0.9,
-            tr.status
-        ]);
+        const rows = transactions.map(tr => {
+            const comm = tr.total * tr.commissionRate;
+            return [
+                tr.id,
+                format(new Date(tr.created_at), 'yyyy-MM-dd'),
+                tr.vendors?.shop_name || 'System',
+                tr.total,
+                comm,
+                tr.total - comm,
+                tr.status
+            ];
+        });
 
         const csvContent = "data:text/csv;charset=utf-8,"
             + headers.join(",") + "\n"
@@ -219,54 +240,67 @@ const AdminFinance = () => {
                                         </TableRow>
                                     ))
                                 ) : transactions.length > 0 ? (
-                                    transactions.map((tr) => (
-                                        <TableRow key={tr.id} className="hover:bg-slate-50/50 transition-colors border-slate-50">
-                                            <TableCell>
-                                                <p className="text-xs font-black text-slate-800">#{tr.id.substring(0, 8).toUpperCase()}</p>
-                                                <p className="text-[10px] font-bold text-slate-400">{format(new Date(tr.created_at), 'dd MMM yyyy', { locale: fr })}</p>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Building2 className="w-3.5 h-3.5 text-primary" />
-                                                    <span className="text-xs font-bold text-slate-600 truncate max-w-[100px]">{tr.vendors?.shop_name || 'System'}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="font-black text-slate-800 text-sm">
-                                                {formatPrice(tr.total)}
-                                            </TableCell>
-                                            <TableCell className="text-emerald-600 font-bold text-xs">
-                                                -{formatPrice(tr.total * 0.1)}
-                                            </TableCell>
-                                            <TableCell className="font-black text-slate-700 text-sm">
-                                                {formatPrice(tr.total * 0.9)}
-                                            </TableCell>
-                                            <TableCell>
-                                                {tr.status === 'delivered' ? (
-                                                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] px-2 py-0.5 flex items-center gap-1 w-fit">
-                                                        <CheckCircle2 className="w-3 h-3" /> DÉBLOQUÉ
-                                                    </Badge>
-                                                ) : tr.payment_status === 'paid' ? (
-                                                    <Badge className="bg-orange-50 text-orange-600 border-none font-black text-[9px] px-2 py-0.5 flex items-center gap-1 w-fit">
-                                                        <Clock className="w-3 h-3" /> SÉCURISÉ
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge className="bg-slate-100 text-slate-400 border-none font-black text-[9px] px-2 py-0.5 w-fit">
-                                                        EN ATTENTE
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => toast.info(`Détails transaction #${tr.id.substring(0, 8)}`)}
-                                                    className="h-8 px-3 rounded-lg font-bold text-xs hover:bg-slate-100 text-primary"
-                                                >
-                                                    Détails
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                    transactions.map((tr) => {
+                                        const totalAmount = Number(tr.total) || Number(tr.total_amount) || 0;
+                                        const commission = totalAmount * (tr.commissionRate || 0.1);
+                                        const netSeller = totalAmount - commission;
+
+                                        return (
+                                            <TableRow key={tr.id} className="hover:bg-slate-50/50 transition-colors border-slate-50">
+                                                <TableCell>
+                                                    <p className="text-xs font-black text-slate-800">#{tr.id.substring(0, 8).toUpperCase()}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400">{format(new Date(tr.created_at), 'dd MMM yyyy', { locale: fr })}</p>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Building2 className="w-3.5 h-3.5 text-primary" />
+                                                        <span className="text-xs font-bold text-slate-600 truncate max-w-[100px]">{tr.vendors?.shop_name || 'System'}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-black text-slate-800 text-sm">
+                                                    {formatPrice(totalAmount)}
+                                                </TableCell>
+                                                <TableCell className="text-emerald-600 font-bold text-xs">
+                                                    -{formatPrice(commission)}
+                                                    <span className="text-[9px] text-slate-400 ml-1">
+                                                        ({((tr.commissionRate || 0.1) * 100).toFixed(0)}%)
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="font-black text-slate-700 text-sm">
+                                                    {formatPrice(netSeller)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {tr.status === 'cancelled' || tr.status === 'returned' ? (
+                                                        <Badge className="bg-red-50 text-red-600 border-none font-black text-[9px] px-2 py-0.5 w-fit">
+                                                            ANNULÉ / RETOUR
+                                                        </Badge>
+                                                    ) : tr.status === 'delivered' ? (
+                                                        <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] px-2 py-0.5 flex items-center gap-1 w-fit">
+                                                            <CheckCircle2 className="w-3 h-3" /> DÉBLOQUÉ
+                                                        </Badge>
+                                                    ) : (tr.payment_status === 'paid' || (tr as any).payment_status === 'paid') ? (
+                                                        <Badge className="bg-orange-50 text-orange-600 border-none font-black text-[9px] px-2 py-0.5 flex items-center gap-1 w-fit">
+                                                            <Clock className="w-3 h-3" /> SÉCURISÉ
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-slate-100 text-slate-400 border-none font-black text-[9px] px-2 py-0.5 w-fit">
+                                                            EN ATTENTE
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => toast.info(`Détails transaction #${tr.id.substring(0, 8)}`)}
+                                                        className="h-8 px-3 rounded-lg font-bold text-xs hover:bg-slate-100 text-primary"
+                                                    >
+                                                        Détails
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={7} className="h-64 text-center text-slate-400 font-bold">Aucune transaction</TableCell>
