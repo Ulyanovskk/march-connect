@@ -4,7 +4,7 @@ import {
   Package, Plus, Edit, Trash2, Eye, TrendingUp, ShoppingCart,
   DollarSign, Users, BarChart3, Settings, LogOut, Store,
   CheckCircle, XCircle, Clock, Image as ImageIcon, Upload, Loader2,
-  PieChart as PieChartIcon, TrendingDown, Calendar, ShieldCheck, QrCode, Truck
+  PieChart as PieChartIcon, TrendingDown, Calendar, ShieldCheck, QrCode, Truck, MapPin
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
@@ -249,6 +249,7 @@ const VendorDashboard = () => {
   });
 
   const [selectedOrderToVerify, setSelectedOrderToVerify] = useState<Order | null>(null);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
 
   // Check auth and fetch data
@@ -350,39 +351,49 @@ const VendorDashboard = () => {
         return;
       }
 
-      // Transform data to match Order type
-      const transformedOrders = items.map((item: any) => ({
-        id: item.order.id,
-        order_number: item.order.order_number,
-        customer_name: item.order.address?.full_name || 'Client anonyme',
-        customer_phone: item.order.address?.phone || 'Non spécifié',
-        customer_email: null, // Pas disponible dans le schéma
-        delivery_address: item.order.address?.address_line1 || 'Adresse non spécifiée',
-        delivery_city: item.order.address?.city || 'Ville non spécifiée',
-        delivery_fee: 0, // À calculer si nécessaire
-        subtotal: item.order.subtotal,
-        total: item.order.total_amount,
-        payment_status: item.order.status,
-        status: item.order.status,
-        payment_method: 'manual', // À déterminer
-        payment_reference: null, // À récupérer de la table payments
-        items: [item], // Les détails des produits
-        created_at: item.order.created_at,
-        updated_at: item.order.created_at,
-        user_id: item.order.user_id,
-        vendor_id: vendorId,
-        currency: 'XAF',
-        customer_whatsapp: null,
-        delivery_notes: null,
-        qr_code_secret: item.order.qr_code_secret,
-      }));
+      // Group items by order_id
+      const groupedOrdersMap = new Map();
 
-      // Remove duplicates (same order with multiple items)
-      const uniqueOrders = Array.from(
-        new Map(transformedOrders.map((order: any) => [order.id, order])).values()
-      );
+      items.forEach((item: any) => {
+        const orderId = item.order.id;
+        if (!groupedOrdersMap.has(orderId)) {
+          groupedOrdersMap.set(orderId, {
+            id: item.order.id,
+            order_number: item.order.order_number,
+            customer_name: item.order.address?.full_name || 'Client anonyme',
+            customer_phone: item.order.address?.phone || 'Non spécifié',
+            customer_email: null,
+            delivery_address: item.order.address?.address_line1 || 'Adresse non spécifiée',
+            delivery_city: item.order.address?.city || 'Ville non spécifiée',
+            delivery_fee: 0,
+            subtotal: item.order.subtotal,
+            total: item.order.total_amount,
+            payment_status: item.order.status,
+            status: item.order.status,
+            payment_method: 'manual',
+            items: [],
+            created_at: item.order.created_at,
+            updated_at: item.order.created_at,
+            user_id: item.order.user_id,
+            vendor_id: vendorId,
+            currency: 'XAF',
+            customer_whatsapp: null,
+            delivery_notes: null,
+            qr_code_secret: item.order.qr_code_secret,
+          });
+        }
 
-      setOrders(uniqueOrders as Order[]);
+        // Add item to the corresponding order
+        groupedOrdersMap.get(orderId).items.push({
+          name: item.product?.name || 'Produit inconnu',
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          image: item.product?.images?.[0]
+        });
+      });
+
+      setOrders(Array.from(groupedOrdersMap.values()) as Order[]);
     } catch (error: any) {
       console.error('Error fetching orders:', error.message);
       // Don't show error toast, just log it
@@ -1096,9 +1107,13 @@ const VendorDashboard = () => {
                         {orders.map((order) => (
                           <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-4">
-                              <span className="font-mono font-bold text-xs text-primary">
+                              <button
+                                onClick={() => setSelectedOrderDetails(order)}
+                                className="font-mono font-bold text-xs text-primary hover:underline flex items-center gap-1"
+                              >
                                 #{order.order_number || order.id.substring(0, 8)}
-                              </span>
+                                <Eye className="w-3 h-3 opacity-50" />
+                              </button>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex flex-col">
@@ -1334,6 +1349,108 @@ const VendorDashboard = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog open={!!selectedOrderDetails} onOpenChange={() => setSelectedOrderDetails(null)}>
+        <DialogContent className="sm:max-w-2xl rounded-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="p-6 pb-2 border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl font-black">Détails de la Commande</DialogTitle>
+                <DialogDescription>Référence #{selectedOrderDetails?.order_number}</DialogDescription>
+              </div>
+              <div className="mr-8">
+                {selectedOrderDetails && getStatusBadge(selectedOrderDetails.status)}
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent pr-4 mr-2">
+            <div className="space-y-8">
+              {/* Client Info Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/30 p-6 rounded-3xl border border-muted-foreground/10">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-primary">
+                    <Users className="w-5 h-5 font-bold" />
+                    <h3 className="font-bold uppercase tracking-wider text-xs">Informations Client</h3>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-black text-lg">{selectedOrderDetails?.customer_name}</p>
+                    <p className="text-muted-foreground font-medium">{selectedOrderDetails?.customer_phone}</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-primary">
+                    <MapPin className="w-5 h-5" />
+                    <h3 className="font-bold uppercase tracking-wider text-xs">Adresse de Livraison</h3>
+                  </div>
+                  <div className="space-y-1 text-sm leading-relaxed">
+                    <p className="font-bold">{selectedOrderDetails?.delivery_address}</p>
+                    <p className="text-muted-foreground font-medium">{selectedOrderDetails?.delivery_city}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items List Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-primary mb-2">
+                  <Package className="w-5 h-5" />
+                  <h3 className="font-bold uppercase tracking-wider text-xs">Articles Commandés</h3>
+                </div>
+                <div className="space-y-3">
+                  {selectedOrderDetails?.items?.map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-muted shadow-sm hover:shadow-md transition-shadow">
+                      <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 border">
+                        <img
+                          src={item.image || '/placeholder.png'}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold truncate text-lg mb-1">{item.name}</p>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="font-medium text-muted-foreground">Qté: <span className="text-foreground font-black">{item.quantity}</span></span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="font-medium text-muted-foreground">Unit: <span className="text-foreground font-black">{formatPrice(item.unit_price)}</span></span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-primary">{formatPrice(item.total_price)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Summary Section */}
+              <div className="pt-6 border-t space-y-3">
+                <div className="flex justify-between items-center text-muted-foreground font-medium">
+                  <span>Sous-total</span>
+                  <span>{selectedOrderDetails && formatPrice(selectedOrderDetails.subtotal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground font-medium">
+                  <span>Frais de livraison</span>
+                  <span>{selectedOrderDetails && formatPrice(selectedOrderDetails.delivery_fee)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t text-2xl font-black text-primary">
+                  <span>Total</span>
+                  <span>{selectedOrderDetails && formatPrice(selectedOrderDetails.total)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-6 pt-2 border-t mt-0">
+            <Button
+              variant="outline"
+              className="w-full h-14 rounded-2xl font-bold"
+              onClick={() => setSelectedOrderDetails(null)}
+            >
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
 
