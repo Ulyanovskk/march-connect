@@ -44,11 +44,23 @@ import { formatPrice } from '@/lib/demo-data';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 const AdminOrders = () => {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [orderDetails, setOrderDetails] = useState<{ items: any[], address: any } | null>(null);
+    const [detailsLoading, setDetailsLoading] = useState(false);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     useEffect(() => {
         fetchOrders();
@@ -58,10 +70,12 @@ const AdminOrders = () => {
         try {
             setLoading(true);
 
+            // Fetch orders with all amount fields
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*, total_amount')
+                .order('created_at', { ascending: false })
+                .limit(500); // Reasonable limit for admin
 
             if (ordersError) throw ordersError;
 
@@ -72,6 +86,7 @@ const AdminOrders = () => {
 
             const mergedOrders = ordersData?.map(order => ({
                 ...order,
+                total: order.total_amount || order.total, // Fallback for legacy
                 vendors: vendorsRes.data?.find(v => v.id === order.vendor_id) || null,
                 profiles: profilesRes.data?.find(p => p.id === order.user_id) || null
             })) || [];
@@ -82,6 +97,45 @@ const AdminOrders = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchOrderDetails = async (orderId: string, addressId: string) => {
+        try {
+            setDetailsLoading(true);
+            setOrderDetails(null);
+
+            // Fetch items with product data
+            const { data: items, error: itemsError } = await supabase
+                .from('order_items')
+                .select('*, products(name, images)')
+                .eq('order_id', orderId);
+
+            if (itemsError) throw itemsError;
+
+            // Fetch address if exists
+            let address = null;
+            if (addressId) {
+                const { data: addr, error: addrError } = await supabase
+                    .from('addresses')
+                    .select('*')
+                    .eq('id', addressId)
+                    .single();
+                if (!addrError) address = addr;
+            }
+
+            setOrderDetails({ items: items || [], address });
+        } catch (error: any) {
+            console.error("Error fetching details:", error);
+            toast.error("Impossible de charger les détails");
+        } finally {
+            setDetailsLoading(false);
+        }
+    };
+
+    const handleViewOrder = (order: any) => {
+        setSelectedOrder(order);
+        setIsDetailsOpen(true);
+        fetchOrderDetails(order.id, order.shipping_address_id);
     };
 
     const getStatusBadge = (status: string) => {
@@ -116,6 +170,12 @@ const AdminOrders = () => {
         try {
             const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
             if (error) throw error;
+
+            // Update local state if selected
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder({ ...selectedOrder, status: newStatus });
+            }
+
             toast.success("Statut mis à jour");
             fetchOrders();
         } catch (error: any) {
@@ -132,6 +192,11 @@ const AdminOrders = () => {
             // In a real system, this would trigger an Edge Function or update a transaction status
             const { error } = await supabase.from('orders').update({ payment_status: 'paid', status: 'delivered' }).eq('id', orderId);
             if (error) throw error;
+
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder({ ...selectedOrder, payment_status: 'paid', status: 'delivered' });
+            }
+
             toast.success("Fonds débloqués avec succès");
             fetchOrders();
         } catch (error: any) {
@@ -147,6 +212,11 @@ const AdminOrders = () => {
         try {
             const { error } = await supabase.from('orders').update({ status: 'cancelled', payment_status: 'failed' }).eq('id', orderId);
             if (error) throw error;
+
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder({ ...selectedOrder, status: 'cancelled', payment_status: 'failed' });
+            }
+
             toast.success("Commande annulée");
             fetchOrders();
         } catch (error: any) {
@@ -251,12 +321,16 @@ const AdminOrders = () => {
                                 ))
                             ) : filteredOrders.length > 0 ? (
                                 filteredOrders.map((order) => (
-                                    <TableRow key={order.id} className="hover:bg-slate-50/50 transition-colors border-slate-50 group">
+                                    <TableRow
+                                        key={order.id}
+                                        className="hover:bg-slate-50/50 transition-colors border-slate-50 group cursor-pointer"
+                                        onClick={() => handleViewOrder(order)}
+                                    >
                                         <TableCell>
                                             <div>
                                                 <p className="font-black text-slate-800 text-sm leading-none flex items-center gap-2">
                                                     #{order.id.substring(0, 8).toUpperCase()}
-                                                    <FileText className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    <FileText className="w-3 h-3 text-slate-300 group-hover:text-primary transition-colors" />
                                                 </p>
                                                 <p className="text-[11px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
                                                     {format(new Date(order.created_at), 'dd MMM | HH:mm', { locale: fr })}
@@ -286,47 +360,9 @@ const AdminOrders = () => {
                                             {getStatusBadge(order.status)}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-64 rounded-xl shadow-xl border-slate-100 p-1">
-                                                    <DropdownMenuItem
-                                                        onClick={() => toast.info(`Détails de la commande #${order.id.substring(0, 8)}`)}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <Eye className="w-4 h-4" /> Détails Complets
-                                                    </DropdownMenuItem>
-                                                    <div className="h-px bg-slate-100 my-1"></div>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleUpdateOrderStatus(order.id, 'shipped')}
-                                                        className="rounded-lg gap-2 font-bold text-indigo-600"
-                                                    >
-                                                        <Truck className="w-4 h-4" /> Marquer "En Transit"
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
-                                                        className="rounded-lg gap-2 font-bold text-emerald-600"
-                                                    >
-                                                        <CheckCircle2 className="w-4 h-4" /> Confirmer Livraison
-                                                    </DropdownMenuItem>
-                                                    <div className="h-px bg-slate-100 my-1"></div>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleForceRelease(order.id)}
-                                                        className="rounded-lg gap-2 font-bold text-amber-600"
-                                                    >
-                                                        <ShieldCheck className="w-4 h-4" /> Forcer Déblocage Fonds
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleCancelOrder(order.id)}
-                                                        className="rounded-lg gap-2 font-bold text-red-600"
-                                                    >
-                                                        <Ban className="w-4 h-4" /> Annuler & Rembourser
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
+                                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -344,6 +380,171 @@ const AdminOrders = () => {
                     </Table>
                 </div>
             </div>
+
+            {/* Order Details Dialog */}
+            {selectedOrder && (
+                <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <DialogTitle className="text-2xl font-black text-slate-800">Commande #{selectedOrder.id.substring(0, 8).toUpperCase()}</DialogTitle>
+                                    <DialogDescription className="text-slate-500 font-medium">
+                                        Passée le {format(new Date(selectedOrder.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                                    </DialogDescription>
+                                </div>
+                                <div className="flex gap-2">
+                                    {getStatusBadge(selectedOrder.status)}
+                                    {getPaymentStatusBadge(selectedOrder.payment_status)}
+                                </div>
+                            </div>
+                        </DialogHeader>
+
+                        <div className="space-y-6 py-4">
+                            {/* Actions Rapides */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'processing')}
+                                >
+                                    <Clock className="w-3.5 h-3.5 mr-2" /> Préparation
+                                </Button>
+                                <Button
+                                    className="bg-purple-600 hover:bg-purple-700 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'shipped')}
+                                >
+                                    <Truck className="w-3.5 h-3.5 mr-2" /> Expédier
+                                </Button>
+                                <Button
+                                    className="bg-emerald-600 hover:bg-emerald-700 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'delivered')}
+                                >
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-2" /> Livrer
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => handleCancelOrder(selectedOrder.id)}
+                                >
+                                    <Ban className="w-3.5 h-3.5 mr-2" /> Annuler
+                                </Button>
+                            </div>
+
+                            <Separator />
+
+                            {/* Informations Client */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <h3 className="font-bold flex items-center gap-2">
+                                        <ShoppingCart className="w-4 h-4 text-primary" /> Informations Client
+                                    </h3>
+                                    <div className="bg-slate-50 p-4 rounded-xl space-y-2 text-sm border border-slate-100">
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Nom:</span>
+                                            <span className="font-bold text-slate-800">{selectedOrder.customer_name || 'Anonyme'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Email:</span>
+                                            <span className="font-medium text-slate-800">{selectedOrder.customer_email || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Compte:</span>
+                                            <span className="font-medium text-slate-800">{selectedOrder.user_id ? 'Utilisateur Inscrit' : 'Invité'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <h3 className="font-bold flex items-center gap-2">
+                                        <Truck className="w-4 h-4 text-primary" /> Livraison
+                                    </h3>
+                                    <div className="bg-slate-50 p-4 rounded-xl space-y-2 text-sm border border-slate-100">
+                                        {detailsLoading ? (
+                                            <div className="flex items-center justify-center py-2"><RefreshCw className="w-4 h-4 animate-spin text-slate-400" /></div>
+                                        ) : orderDetails?.address ? (
+                                            <>
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Adresse:</span>
+                                                    <span className="font-bold text-slate-800 text-right">{orderDetails.address.address_line1}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Ville:</span>
+                                                    <span className="font-medium text-slate-800">{orderDetails.address.city}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Téléphone:</span>
+                                                    <span className="font-medium text-slate-800">{orderDetails.address.phone}</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-slate-400 italic text-center">Aucune adresse associée</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Articles */}
+                            <div className="space-y-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <Package className="w-4 h-4 text-primary" /> Articles Commandés
+                                </h3>
+                                <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                                    {detailsLoading ? (
+                                        <div className="p-8 flex justify-center"><RefreshCw className="w-6 h-6 animate-spin text-primary" /></div>
+                                    ) : (
+                                        <Table>
+                                            <TableHeader className="bg-slate-50">
+                                                <TableRow>
+                                                    <TableHead className="w-[50px]">Img</TableHead>
+                                                    <TableHead>Produit</TableHead>
+                                                    <TableHead className="text-right">Prix Unit.</TableHead>
+                                                    <TableHead className="text-right">Qté</TableHead>
+                                                    <TableHead className="text-right">Total</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {orderDetails?.items?.map((item: any) => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell>
+                                                            <div className="w-8 h-8 rounded bg-slate-100 overflow-hidden">
+                                                                {item.products?.images?.[0] && <img src={item.products.images[0]} className="w-full h-full object-cover" />}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="font-medium text-sm">{item.products?.name || 'Produit inconnu'}</TableCell>
+                                                        <TableCell className="text-right text-xs">{formatPrice(item.unit_price)}</TableCell>
+                                                        <TableCell className="text-right text-xs font-bold">{item.quantity}</TableCell>
+                                                        <TableCell className="text-right text-sm font-bold">{formatPrice(item.total_price)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                <TableRow className="bg-slate-50 font-bold">
+                                                    <TableCell colSpan={4} className="text-right">Total Commande</TableCell>
+                                                    <TableCell className="text-right text-primary">{formatPrice(selectedOrder.total)}</TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Paiement */}
+                            <div className="space-y-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <CreditCard className="w-4 h-4 text-primary" /> Détails Paiement
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                                    <div>
+                                        <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Méthode</p>
+                                        <p className="font-bold text-slate-800 capitalize">{selectedOrder.payment_method?.replace('_', ' ')}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Référence Transaction</p>
+                                        <p className="font-mono font-bold text-slate-800 text-sm">{selectedOrder.payment_reference || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </AdminLayout>
     );
 };

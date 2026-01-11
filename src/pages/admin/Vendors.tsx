@@ -14,7 +14,8 @@ import {
     Wallet,
     BadgeCheck,
     AlertTriangle,
-    Eye
+    Eye,
+    Ban
 } from 'lucide-react';
 import {
     Table,
@@ -38,7 +39,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
-
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { formatPrice } from '@/lib/demo-data'; // Fixed: Correct path is demo-data
 import { useNavigate } from 'react-router-dom';
 
 const AdminVendors = () => {
@@ -46,6 +55,9 @@ const AdminVendors = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
+    const [selectedVendor, setSelectedVendor] = useState<any>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [vendorStats, setVendorStats] = useState({ products: 0, orders: 0, revenue: 0 });
 
     useEffect(() => {
         fetchVendors();
@@ -63,7 +75,7 @@ const AdminVendors = () => {
 
             const { data: profilesData, error: profilesError } = await supabase
                 .from('profiles')
-                .select('id, full_name, avatar_url');
+                .select('id, full_name, avatar_url, email, phone');
 
             if (profilesError) console.warn("Error fetching profiles for vendors:", profilesError);
 
@@ -80,6 +92,40 @@ const AdminVendors = () => {
         }
     };
 
+    const fetchVendorStats = async (vendorId: string) => {
+        try {
+            // Count products
+            const { count: productsCount } = await supabase
+                .from('products')
+                .select('*', { count: 'exact', head: true })
+                .eq('vendor_id', vendorId);
+
+            // Count orders directly linked to this vendor
+            const { count: ordersCount, data: orders } = await supabase
+                .from('orders')
+                .select('total_amount')
+                .eq('vendor_id', vendorId);
+
+            // Calculate revenue (simple sum of order totals for this vendor)
+            const revenue = orders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
+
+            setVendorStats({
+                products: productsCount || 0,
+                orders: ordersCount || 0,
+                revenue: revenue
+            });
+        } catch (error) {
+            console.error("Error fetching vendor stats:", error);
+        }
+    };
+
+    const handleViewVendor = (vendor: any) => {
+        setSelectedVendor(vendor);
+        setVendorStats({ products: 0, orders: 0, revenue: 0 }); // Reset stats
+        setIsDetailsOpen(true);
+        fetchVendorStats(vendor.id);
+    };
+
     const handleVerifyVendor = async (id: string, isVerified: boolean) => {
         try {
             const { error } = await supabase
@@ -88,7 +134,14 @@ const AdminVendors = () => {
                 .eq('id', id);
 
             if (error) throw error;
+
             toast.success(isVerified ? "Vendeur vérifié avec succès" : "Vérification retirée");
+
+            // Update local state if selected
+            if (selectedVendor?.id === id) {
+                setSelectedVendor({ ...selectedVendor, is_verified: isVerified });
+            }
+
             fetchVendors();
         } catch (error: any) {
             toast.error("Erreur lors de la mise à jour: " + error.message);
@@ -118,6 +171,11 @@ const AdminVendors = () => {
             if (productsError) throw productsError;
 
             toast.success(`La boutique "${shopName}" a été bannie et ses produits désactivés.`);
+
+            if (selectedVendor?.id === id) {
+                setSelectedVendor({ ...selectedVendor, is_verified: false });
+            }
+
             fetchVendors();
         } catch (error: any) {
             toast.error("Erreur lors de l'opération de bannissement");
@@ -210,12 +268,16 @@ const AdminVendors = () => {
                                 ))
                             ) : filteredVendors.length > 0 ? (
                                 filteredVendors.map((vendor) => (
-                                    <TableRow key={vendor.id} className="hover:bg-slate-50/50 transition-colors border-slate-50">
+                                    <TableRow
+                                        key={vendor.id}
+                                        className="hover:bg-slate-50/50 transition-colors border-slate-50 group cursor-pointer"
+                                        onClick={() => handleViewVendor(vendor)}
+                                    >
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 shrink-0">
+                                                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden">
                                                     {vendor.logo_url ? (
-                                                        <img src={vendor.logo_url} alt="" className="w-full h-full object-cover rounded-xl" />
+                                                        <img src={vendor.logo_url} alt="" className="w-full h-full object-cover" />
                                                     ) : (
                                                         <Store className="w-5 h-5 text-slate-400" />
                                                     )}
@@ -261,49 +323,9 @@ const AdminVendors = () => {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-100 p-1">
-                                                    <DropdownMenuItem
-                                                        onClick={() => toast.info(`Navigation vers la boutique ${vendor.shop_name}`)}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <Eye className="w-4 h-4" /> Voir Boutique
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => toast.info(`Visualisation du profil de ${vendor.profiles?.full_name}`)}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <ExternalLink className="w-4 h-4" /> Profil Utilisateur
-                                                    </DropdownMenuItem>
-                                                    <div className="h-px bg-slate-100 my-1"></div>
-                                                    {vendor.is_verified ? (
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleVerifyVendor(vendor.id, false)}
-                                                            className="rounded-lg gap-2 font-bold text-amber-600"
-                                                        >
-                                                            <XCircle className="w-4 h-4" /> Retirer Vérification
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleVerifyVendor(vendor.id, true)}
-                                                            className="rounded-lg gap-2 font-bold text-emerald-600"
-                                                        >
-                                                            <CheckCircle className="w-4 h-4" /> Certifier Vendeur
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleBanShop(vendor.id, vendor.shop_name)}
-                                                        className="rounded-lg gap-2 font-bold text-red-600 hover:bg-red-50"
-                                                    >
-                                                        <XCircle className="w-4 h-4" /> Bannir Boutique
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
+                                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -316,6 +338,117 @@ const AdminVendors = () => {
                     </Table>
                 </div>
             </div>
+
+            {/* Vendor Details Dialog */}
+            {selectedVendor && (
+                <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden shadow-sm">
+                                    {selectedVendor.logo_url ? (
+                                        <img src={selectedVendor.logo_url} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Store className="w-8 h-8 text-slate-300" />
+                                    )}
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                        {selectedVendor.shop_name}
+                                        {selectedVendor.is_verified && <BadgeCheck className="w-6 h-6 text-primary fill-primary/10" />}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-slate-500 font-medium flex items-center gap-2">
+                                        Vendeur: <span className="text-slate-700 font-bold">{selectedVendor.profiles?.full_name || 'Inconnu'}</span>
+                                        {selectedVendor.city && <span>• {selectedVendor.city}</span>}
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                        </DialogHeader>
+
+                        <div className="space-y-6 py-4">
+                            {/* Quick Actions */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <Button
+                                    className={`${selectedVendor.is_verified ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} h-12 rounded-xl text-xs font-bold`}
+                                    onClick={() => handleVerifyVendor(selectedVendor.id, !selectedVendor.is_verified)}
+                                >
+                                    {selectedVendor.is_verified ? <XCircle className="w-3.5 h-3.5 mr-2" /> : <CheckCircle className="w-3.5 h-3.5 mr-2" />}
+                                    {selectedVendor.is_verified ? 'Retirer Verif.' : 'Certifier'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="border-slate-200 hover:bg-slate-50 h-12 rounded-xl text-xs font-bold text-slate-600"
+                                    onClick={() => navigate(`/admin/products?search=${encodeURIComponent(selectedVendor.shop_name)}`)}
+                                >
+                                    <Package className="w-3.5 h-3.5 mr-2" /> Voir Produits
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="border-slate-200 hover:bg-slate-50 h-12 rounded-xl text-xs font-bold text-slate-600"
+                                    onClick={() => toast.info('Voir historique commandes (Bientôt)')}
+                                >
+                                    <Wallet className="w-3.5 h-3.5 mr-2" /> Historique
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => handleBanShop(selectedVendor.id, selectedVendor.shop_name)}
+                                >
+                                    <Ban className="w-3.5 h-3.5 mr-2" /> Bannir
+                                </Button>
+                            </div>
+
+                            <Separator />
+
+                            {/* Key Stats */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Produits</p>
+                                    <p className="text-xl font-black text-slate-800">{vendorStats.products}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Commandes</p>
+                                    <p className="text-xl font-black text-slate-800">{vendorStats.orders}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vol. Ventes EST.</p>
+                                    <p className="text-xl font-black text-emerald-600">{formatPrice(vendorStats.revenue)}</p>
+                                </div>
+                            </div>
+
+                            {/* Contact & Info */}
+                            <div className="space-y-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <Store className="w-4 h-4 text-primary" /> Informations Boutique
+                                </h3>
+                                <div className="bg-white border border-slate-100 rounded-xl overflow-hidden text-sm">
+                                    {selectedVendor.description && (
+                                        <div className="bg-slate-50 p-4 text-slate-600 italic border-b border-slate-100">
+                                            "{selectedVendor.description}"
+                                        </div>
+                                    )}
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Email Contact</div>
+                                        <div className="w-2/3 p-3 font-medium text-slate-800">{selectedVendor.profiles?.email || 'N/A'}</div>
+                                    </div>
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Téléphone</div>
+                                        <div className="w-2/3 p-3 font-medium text-slate-800">{selectedVendor.profiles?.phone || 'N/A'}</div>
+                                    </div>
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Adresse</div>
+                                        <div className="w-2/3 p-3 text-slate-800">{selectedVendor.address || 'Non renseignée'}</div>
+                                    </div>
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Rejoint le</div>
+                                        <div className="w-2/3 p-3 text-slate-800">{selectedVendor.created_at ? format(new Date(selectedVendor.created_at), 'dd MMMM yyyy', { locale: fr }) : 'N/A'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </AdminLayout>
     );
 };

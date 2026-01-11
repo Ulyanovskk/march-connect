@@ -16,7 +16,8 @@ import {
     ShieldCheck,
     SearchX,
     FileEdit,
-    Trash2
+    Trash2,
+    FileText
 } from 'lucide-react';
 import {
     Table,
@@ -40,15 +41,31 @@ import { formatPrice } from '@/lib/demo-data';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const AdminProducts = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Initialize search term from URL parameter if present
+    const queryParams = new URLSearchParams(location.search);
+    const initialSearch = queryParams.get('search') || '';
+
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedProduct, setSelectedProduct] = useState<any>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     useEffect(() => {
         fetchProducts();
@@ -64,16 +81,22 @@ const AdminProducts = () => {
 
             if (productsError) throw productsError;
 
-            const { data: vendorsData, error: vendorsError } = await supabase
-                .from('vendors')
-                .select('id, shop_name');
+            const [vendorsRes, profilesRes] = await Promise.all([
+                supabase.from('vendors').select('id, shop_name, description'),
+                supabase.from('profiles').select('id, full_name, email')
+            ]);
 
-            if (vendorsError) console.warn("Error fetching vendors for products:", vendorsError);
+            if (vendorsRes.error) console.warn("Error fetching vendors:", vendorsRes.error);
 
-            const mergedProducts = productsData?.map(product => ({
-                ...product,
-                vendors: vendorsData?.find(v => v.id === product.vendor_id) || null
-            })) || [];
+            const mergedProducts = productsData?.map(product => {
+                const vendor = vendorsRes.data?.find(v => v.id === product.vendor_id);
+                const profile = profilesRes.data?.find(p => p.id === product.vendor_id);
+
+                return {
+                    ...product,
+                    vendors: vendor ? { ...vendor, shop_description: vendor.description } : (profile ? { shop_name: profile.full_name, shop_description: `Profil Particulier (${profile.email})` } : null)
+                };
+            }) || [];
 
             setProducts(mergedProducts);
         } catch (error: any) {
@@ -81,6 +104,11 @@ const AdminProducts = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleViewProduct = (product: any) => {
+        setSelectedProduct(product);
+        setIsDetailsOpen(true);
     };
 
     const handleToggleActive = async (productId: string, currentStatus: boolean) => {
@@ -92,6 +120,12 @@ const AdminProducts = () => {
 
             if (error) throw error;
             toast.success(currentStatus ? "Produit désactivé" : "Produit activé");
+
+            // Update local state if selected
+            if (selectedProduct?.id === productId) {
+                setSelectedProduct({ ...selectedProduct, is_active: !currentStatus });
+            }
+
             fetchProducts();
         } catch (error: any) {
             toast.error("Erreur de mise à jour: " + error.message);
@@ -120,6 +154,12 @@ const AdminProducts = () => {
 
                         if (updateError) throw updateError;
                         toast.success("Produit désactivé car il possède un historique de commandes.");
+
+                        // Update local
+                        if (selectedProduct?.id === productId) {
+                            setSelectedProduct({ ...selectedProduct, is_active: false });
+                        }
+
                         fetchProducts();
                         return;
                     } else {
@@ -130,6 +170,7 @@ const AdminProducts = () => {
             }
 
             toast.success("Produit supprimé avec succès");
+            setIsDetailsOpen(false); // Close modal if open
             fetchProducts();
         } catch (error: any) {
             toast.error("Erreur lors de la suppression: " + (error.message || "Une erreur est survenue"));
@@ -238,7 +279,11 @@ const AdminProducts = () => {
                                 ))
                             ) : filteredProducts.length > 0 ? (
                                 filteredProducts.map((product) => (
-                                    <TableRow key={product.id} className="hover:bg-slate-50/50 transition-colors border-slate-50 group">
+                                    <TableRow
+                                        key={product.id}
+                                        className="hover:bg-slate-50/50 transition-colors border-slate-50 group cursor-pointer"
+                                        onClick={() => handleViewProduct(product)}
+                                    >
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shrink-0">
@@ -284,41 +329,9 @@ const AdminProducts = () => {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-100 p-1">
-                                                    <DropdownMenuItem
-                                                        onClick={() => navigate(`/product/${product.id}`)}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <Eye className="w-4 h-4" /> Voir sur le site
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => toast.info("L'éditeur de produit sera bientôt disponible dans l'admin")}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <FileEdit className="w-4 h-4" /> Modifier détails
-                                                    </DropdownMenuItem>
-                                                    <div className="h-px bg-slate-100 my-1"></div>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleToggleActive(product.id, product.is_active)}
-                                                        className={`rounded-lg gap-2 font-bold ${product.is_active ? 'text-amber-600' : 'text-emerald-600'}`}
-                                                    >
-                                                        {product.is_active ? <Ban className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-                                                        {product.is_active ? "Désactiver produit" : "Activer produit"}
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleDeleteProduct(product.id)}
-                                                        className="rounded-lg gap-2 font-bold text-red-600 focus:bg-red-50"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" /> Supprimer définitivement
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
+                                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -336,6 +349,122 @@ const AdminProducts = () => {
                     </Table>
                 </div>
             </div>
+
+            {/* Product Details Dialog */}
+            {selectedProduct && (
+                <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                                    {selectedProduct.images?.[0] ? (
+                                        <img src={selectedProduct.images[0]} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-6 h-6" /></div>
+                                    )}
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-2xl font-black text-slate-800">{selectedProduct.name}</DialogTitle>
+                                    <DialogDescription className="text-slate-500 font-medium">
+                                        Vendu par <span className="text-primary font-bold">{selectedProduct.vendors?.shop_name || 'Inconnue'}</span> • {selectedProduct.category}
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                        </DialogHeader>
+
+                        <div className="space-y-6 py-4">
+                            {/* Actions Rapides */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <Button
+                                    className="bg-indigo-600 hover:bg-indigo-700 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => navigate(`/product/${selectedProduct.id}`)}
+                                >
+                                    <Eye className="w-3.5 h-3.5 mr-2" /> Voir sur le site
+                                </Button>
+                                <Button
+                                    className={`${selectedProduct.is_active ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} h-12 rounded-xl text-xs font-bold`}
+                                    onClick={() => handleToggleActive(selectedProduct.id, selectedProduct.is_active)}
+                                >
+                                    {selectedProduct.is_active ? <Ban className="w-3.5 h-3.5 mr-2" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-2" />}
+                                    {selectedProduct.is_active ? 'Désactiver' : 'Activer'}
+                                </Button>
+                                <Button
+                                    className="bg-slate-800 hover:bg-slate-900 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => toast.info("L'édition sera bientôt disponible")}
+                                >
+                                    <FileEdit className="w-3.5 h-3.5 mr-2" /> Modifier
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100 h-12 rounded-xl text-xs font-bold"
+                                    onClick={() => handleDeleteProduct(selectedProduct.id)}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Supprimer
+                                </Button>
+                            </div>
+
+                            <Separator />
+
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Prix</p>
+                                    <p className="text-xl font-black text-slate-800">{formatPrice(selectedProduct.price)}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stock</p>
+                                    <p className={`text-xl font-black ${selectedProduct.stock < 5 ? 'text-red-500' : 'text-slate-800'}`}>{selectedProduct.stock}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vues</p>
+                                    <p className="text-xl font-black text-slate-800">{selectedProduct.views || 0}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Statut</p>
+                                    <p className={`text-xl font-black ${selectedProduct.is_active ? 'text-emerald-500' : 'text-amber-500'}`}>{selectedProduct.is_active ? 'Actif' : 'Inactif'}</p>
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div className="space-y-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-primary" /> Description
+                                </h3>
+                                <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 leading-relaxed border border-slate-100">
+                                    {selectedProduct.description || "Aucune description fournie par le vendeur."}
+                                </div>
+                            </div>
+
+                            {/* Additional Info */}
+                            {/* Additional Info */}
+                            <div className="space-y-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <Store className="w-4 h-4 text-primary" /> Informations Complémentaires
+                                </h3>
+                                <div className="bg-white border border-slate-100 rounded-xl overflow-hidden text-sm">
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Boutique</div>
+                                        <div className="w-2/3 p-3 font-bold text-slate-800">{selectedProduct.vendors?.shop_name || 'Non spécifié'}</div>
+                                    </div>
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Vendeur (Desc.)</div>
+                                        <div className="w-2/3 p-3 text-slate-600 italic line-clamp-2">{selectedProduct.vendors?.shop_description || 'Aucune description'}</div>
+                                    </div>
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Ajouté le</div>
+                                        <div className="w-2/3 p-3 text-slate-700">{format(new Date(selectedProduct.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}</div>
+                                    </div>
+                                    <div className="flex border-b border-slate-50 last:border-0">
+                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Référence (ID)</div>
+                                        <div className="w-2/3 p-3 font-mono text-[10px] text-slate-400">{selectedProduct.id}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </AdminLayout>
     );
 };
