@@ -140,10 +140,10 @@ const AdminOrders = () => {
             setDetailsLoading(true);
             setOrderDetails(null);
 
-            // Fetch items with product data
+            // Fetch items with product data AND nested vendor data
             const { data: items, error: itemsError } = await supabase
                 .from('order_items')
-                .select('*, products(name, images)')
+                .select('*, products(name, images, vendor_id, vendors(shop_name))')
                 .eq('order_id', orderId);
 
             if (itemsError) throw itemsError;
@@ -172,6 +172,14 @@ const AdminOrders = () => {
         setSelectedOrder(order);
         setIsDetailsOpen(true);
         fetchOrderDetails(order.id, order.shipping_address_id);
+    };
+
+    // Helper to extract shop name from details
+    const getOrderShopName = () => {
+        if (!orderDetails?.items || orderDetails.items.length === 0) return 'Chargement...';
+        // Assuming single vendor per order for now, or take the first one
+        const firstItem = orderDetails.items[0];
+        return (firstItem.products as any)?.vendors?.shop_name || 'Boutique Inconnue';
     };
 
     const getStatusBadge = (status: string) => {
@@ -586,11 +594,17 @@ const AdminOrders = () => {
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                     <h3 className="font-bold flex items-center gap-2">
-                                        <ShoppingCart className="w-4 h-4 text-primary" /> Informations Client
+                                        <ShoppingCart className="w-4 h-4 text-primary" /> Informations Client / Boutique
                                     </h3>
                                     <div className="bg-slate-50 p-4 rounded-xl space-y-2 text-sm border border-slate-100">
+                                        <div className="flex justify-between border-b border-slate-200 pb-2 mb-2">
+                                            <span className="text-slate-500">Boutique:</span>
+                                            <span className="font-black text-primary text-base">
+                                                {detailsLoading ? <RefreshCw className="w-3 h-3 animate-spin inline" /> : getOrderShopName()}
+                                            </span>
+                                        </div>
                                         <div className="flex justify-between">
-                                            <span className="text-slate-500">Nom:</span>
+                                            <span className="text-slate-500">Nom Client:</span>
                                             <span className="font-bold text-slate-800">{selectedOrder.customer_name || 'Anonyme'}</span>
                                         </div>
                                         <div className="flex justify-between">
@@ -683,7 +697,12 @@ const AdminOrders = () => {
                                 <div className="grid grid-cols-2 gap-4 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
                                     <div>
                                         <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Méthode</p>
-                                        <p className="font-bold text-slate-800 capitalize">{selectedOrder.payment_method?.replace('_', ' ')}</p>
+                                        <p className="font-bold text-slate-800 capitalize">
+                                            {selectedOrder.payment_method === 'orange_money' ? 'Orange Money' :
+                                                selectedOrder.payment_method === 'mtn_money' ? 'Mobile Money (MTN)' :
+                                                    selectedOrder.payment_method === 'paypal' ? 'PayPal' :
+                                                        selectedOrder.payment_method?.replace(/_/g, ' ') || 'N/A'}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Référence Transaction</p>
