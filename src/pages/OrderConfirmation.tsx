@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle, ShoppingBag, Home, Loader2, Package } from 'lucide-react';
+import { CheckCircle, ShoppingBag, Home, Loader2, Package, AlertTriangle, QrCode } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPrice } from '@/lib/demo-data';
+import { QRCodeCanvas } from 'qrcode.react';
 
 const OrderConfirmation = () => {
   const [searchParams] = useSearchParams();
@@ -89,6 +90,48 @@ const OrderConfirmation = () => {
                     <li>{order.payment_method === 'cash' ? "Le paiement se fera à la livraison." : "Le statut de votre commande passera à 'Paid' dès validation de votre transaction."}</li>
                     <li>Vous pouvez suivre l'état de votre commande dans votre espace client.</li>
                   </ul>
+                </div>
+
+                {/* QR Code Section */}
+                <div className="pt-8 border-t space-y-6 text-center">
+                  <div className="space-y-2">
+                    <h3 className="font-black text-xl flex items-center justify-center gap-2">
+                      <QrCode className="w-6 h-6 text-primary" />
+                      Votre Code de Livraison
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                      Présentez ce code à l'agent YARID lors de la livraison pour confirmer la réception.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center p-6 bg-white rounded-3xl border-4 border-primary/5 shadow-inner">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm border">
+                      <QRCodeCanvas
+                        value={order.qr_code_secret || order.id}
+                        size={180}
+                        level="H"
+                        includeMargin={true}
+                        imageSettings={{
+                          src: "/favicon.ico",
+                          x: undefined,
+                          y: undefined,
+                          height: 30,
+                          width: 30,
+                          excavate: true,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-4 font-mono font-black text-primary tracking-widest px-4 py-1.5 bg-primary/5 rounded-full border border-primary/10">
+                      {order.order_number}
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 leading-relaxed font-semibold text-left">
+                      IMPORTANT : Ne partagez pas ce code avant d'avoir reçu vos articles. Le scan de ce code valide la livraison et débloque le paiement.
+                    </p>
+                  </div>
                 </div>
               </div>
 

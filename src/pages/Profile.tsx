@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
     User, Store, Mail, ShieldCheck, Save, Loader2, Calendar,
     LogOut, Settings, Bell, CreditCard, ShoppingBag,
-    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2
+    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2, QrCode
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
@@ -19,6 +19,14 @@ import { Package, Clock, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '@/lib/demo-data';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { QRCodeCanvas } from 'qrcode.react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 
 const Profile = () => {
     const navigate = useNavigate();
@@ -27,6 +35,7 @@ const Profile = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('personal');
+    const [selectedOrderForQR, setSelectedOrderForQR] = useState<any>(null);
 
     useEffect(() => {
         fetchProfileAndOrders();
@@ -48,37 +57,18 @@ const Profile = () => {
                 .single();
 
             if (profileError) throw profileError;
-
-            // Check for vendor info
-            let vendorData = null;
-            const { data: vData } = await supabase
-                .from('vendors')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .single();
-
-            vendorData = vData;
-
-            // Fetch User Roles to get the actual role
-            const { data: roles } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', session.user.id);
-
-            const userRole = roles && roles.length > 0 ? roles[0].role : 'client';
-
-            setProfile({
-                ...profileData,
-                role: userRole,
-                shop_name: vendorData?.shop_name || '',
-                description: vendorData?.description || '',
-                city: vendorData?.city || profileData?.city || ''
-            });
+            setProfile(profileData);
 
             // Fetch Client Orders
             const { data: ordersData, error: ordersError } = await (supabase as any)
                 .from('orders')
-                .select('*')
+                .select(`
+                    *,
+                    order_items (
+                        *,
+                        products (*)
+                    )
+                `)
                 .eq('user_id', session.user.id)
                 .order('created_at', { ascending: false });
 
@@ -86,31 +76,10 @@ const Profile = () => {
             setOrders(ordersData || []);
 
         } catch (error: any) {
-            console.error('Error:', error.message);
+            console.error('Error fetching data:', error);
             toast.error('Erreur lors du chargement des données');
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        navigate('/');
-        toast.success("Déconnexion réussie");
-    };
-
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'pending_verification':
-                return <Badge className="bg-amber-100 text-amber-700 border-none px-3 py-1 rounded-full"><Clock className="w-3 h-3 mr-1" /> À vérifier</Badge>;
-            case 'paid':
-                return <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 rounded-full"><CheckCircle2 className="w-3 h-3 mr-1" /> Payé</Badge>;
-            case 'processing':
-                return <Badge className="bg-indigo-100 text-indigo-700 border-none px-3 py-1 rounded-full"><Package className="w-3 h-3 mr-1" /> En cours</Badge>;
-            case 'completed':
-                return <Badge className="bg-blue-100 text-blue-700 border-none px-3 py-1 rounded-full"><CheckCircle2 className="w-3 h-3 mr-1" /> Livré</Badge>;
-            default:
-                return <Badge variant="secondary" className="rounded-full px-3 py-1">{status}</Badge>;
         }
     };
 
@@ -118,25 +87,25 @@ const Profile = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
-            // Update Profile
             const { error: profileErr } = await supabase
                 .from('profiles')
                 .update({
                     full_name: profile.full_name,
-                    city: profile.city
+                    shop_name: profile.shop_name,
+                    description: profile.description,
+                    city: profile.city,
                 })
                 .eq('id', profile.id);
 
             if (profileErr) throw profileErr;
 
-            // Update Vendor if applicable
             if (profile.role === 'vendor') {
                 const { error: vendorErr } = await supabase
                     .from('vendors')
                     .update({
-                        shop_name: profile.shop_name,
+                        name: profile.shop_name,
                         description: profile.description,
-                        city: profile.city
+                        city: profile.city,
                     })
                     .eq('user_id', profile.id);
 
@@ -149,6 +118,26 @@ const Profile = () => {
             toast.error('Erreur lors de la mise à jour');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/');
+    };
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'pending':
+                return <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">En attente</Badge>;
+            case 'processing':
+                return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">En préparation</Badge>;
+            case 'completed':
+                return <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200">Livré</Badge>;
+            case 'cancelled':
+                return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">Annulé</Badge>;
+            default:
+                return <Badge variant="outline">{status}</Badge>;
         }
     };
 
@@ -508,6 +497,15 @@ const Profile = () => {
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                className="rounded-xl font-bold gap-2"
+                                                                size="sm"
+                                                                onClick={() => setSelectedOrderForQR(order)}
+                                                            >
+                                                                <QrCode className="w-4 h-4" />
+                                                                QR Code
+                                                            </Button>
                                                             <Button variant="outline" className="rounded-xl font-bold" size="sm">
                                                                 Détails
                                                             </Button>
@@ -575,6 +573,59 @@ const Profile = () => {
             </main>
 
             <Footer />
+
+            <Dialog open={!!selectedOrderForQR} onOpenChange={() => setSelectedOrderForQR(null)}>
+                <DialogContent className="sm:max-w-md rounded-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-center">Votre Code de Livraison</DialogTitle>
+                        <DialogDescription className="text-center text-muted-foreground">
+                            Présentez ce code à l'agent YARID lors de la livraison pour confirmer la réception de votre commande <span className="font-bold text-foreground">#{selectedOrderForQR?.order_number}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border shadow-inner mt-4">
+                        {selectedOrderForQR?.qr_code_secret ? (
+                            <>
+                                <div className="p-4 bg-white rounded-2xl shadow-sm border-4 border-primary/10">
+                                    <QRCodeCanvas
+                                        value={selectedOrderForQR.qr_code_secret}
+                                        size={200}
+                                        level="H"
+                                        includeMargin={true}
+                                        imageSettings={{
+                                            src: "/favicon.ico",
+                                            x: undefined,
+                                            y: undefined,
+                                            height: 40,
+                                            width: 40,
+                                            excavate: true,
+                                        }}
+                                    />
+                                </div>
+                                <p className="mt-6 font-mono font-bold text-lg text-primary tracking-widest bg-primary/5 px-6 py-2 rounded-full border border-primary/10">
+                                    {selectedOrderForQR.order_number}
+                                </p>
+                            </>
+                        ) : (
+                            <div className="text-center py-10">
+                                <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+                                <p className="text-muted-foreground">Génération du code sécurisé...</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3 mt-4">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                            Ne partagez ce code avec personne avant d'avoir physiquement reçu et vérifié vos articles. Une fois scanné, la commande sera marquée comme livrée et les fonds débloqués.
+                        </p>
+                    </div>
+                    <Button
+                        className="w-full h-14 rounded-2xl font-black text-lg mt-4"
+                        onClick={() => setSelectedOrderForQR(null)}
+                    >
+                        Fermer
+                    </Button>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

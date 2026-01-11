@@ -4,8 +4,9 @@ import {
   Package, Plus, Edit, Trash2, Eye, TrendingUp, ShoppingCart,
   DollarSign, Users, BarChart3, Settings, LogOut, Store,
   CheckCircle, XCircle, Clock, Image as ImageIcon, Upload, Loader2,
-  PieChart as PieChartIcon, TrendingDown, Calendar, ShieldCheck
+  PieChart as PieChartIcon, TrendingDown, Calendar, ShieldCheck, QrCode, Truck
 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar, Legend
@@ -16,7 +17,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,6 +76,7 @@ type Order = {
   customer_whatsapp: string | null;
   order_number: string | null;
   delivery_notes: string | null;
+  qr_code_secret: string | null; // Unified to qr_code_secret
 };
 
 // Custom Image Upload Component
@@ -238,6 +248,9 @@ const VendorDashboard = () => {
     images: [] as string[],
   });
 
+  const [selectedOrderToVerify, setSelectedOrderToVerify] = useState<Order | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+
   // Check auth and fetch data
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -319,6 +332,7 @@ const VendorDashboard = () => {
              total_amount,
              created_at,
              shipping_address_id,
+             qr_code_secret,
              address:addresses (
                full_name,
                phone,
@@ -359,7 +373,8 @@ const VendorDashboard = () => {
         vendor_id: vendorId,
         currency: 'XAF',
         customer_whatsapp: null,
-        delivery_notes: null
+        delivery_notes: null,
+        qr_code_secret: item.order.qr_code_secret,
       }));
 
       // Remove duplicates (same order with multiple items)
@@ -410,6 +425,54 @@ const VendorDashboard = () => {
       if (vendorId) fetchOrders(vendorId);
     } catch (error: any) {
       toast.error('Erreur lors de l\'annulation: ' + error.message);
+    }
+  };
+
+  const handleMarkAsShipped = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'shipped'
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.success('Commande marquée comme expédiée. En attente de livraison.');
+      if (vendorId) fetchOrders(vendorId);
+    } catch (error: any) {
+      toast.error('Erreur lors du marquage comme expédiée: ' + error.message);
+    }
+  };
+
+  const handleVerifyDelivery = async () => {
+    if (!selectedOrderToVerify || !verificationCode) {
+      toast.error('Veuillez saisir le code de vérification.');
+      return;
+    }
+
+    if (verificationCode !== selectedOrderToVerify.qr_code_secret) {
+      toast.error('Code de vérification incorrect.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'delivered'
+        })
+        .eq('id', selectedOrderToVerify.id);
+
+      if (error) throw error;
+
+      toast.success('Livraison confirmée avec succès !');
+      setSelectedOrderToVerify(null);
+      setVerificationCode('');
+      if (vendorId) fetchOrders(vendorId);
+    } catch (error: any) {
+      toast.error('Erreur lors de la confirmation de livraison: ' + error.message);
     }
   };
 
@@ -553,10 +616,16 @@ const VendorDashboard = () => {
         return <Badge className="bg-yarid-yellow/10 text-yarid-yellow border-0">En attente</Badge>;
       case 'pending_verification':
         return <Badge className="bg-orange-100 text-orange-600 border-0 text-[10px]">Paiement à vérifier</Badge>;
-      case 'completed':
-        return <Badge className="bg-yarid-green/10 text-yarid-green border-0 text-[10px]">Livré</Badge>;
+      case 'delivered':
+        return <Badge className="bg-yarid-green/10 text-yarid-green border-0 text-[10px]">Livrée</Badge>;
       case 'paid':
         return <Badge className="bg-blue-100 text-blue-600 border-0 text-[10px]">Payé</Badge>;
+      case 'processing':
+        return <Badge className="bg-blue-100 text-blue-600 border-0 text-[10px]">En préparation</Badge>;
+      case 'shipped':
+        return <Badge className="bg-purple-100 text-purple-600 border-0 text-[10px]">Expédiée</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive" className="text-[10px]">Annulée</Badge>;
       default:
         return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
     }
@@ -1065,13 +1134,29 @@ const VendorDashboard = () => {
                                 </div>
                               )}
                               {order.status === 'processing' && (
-                                <span className="text-[10px] text-blue-600 font-medium flex items-center justify-center gap-1">
-                                  <CheckCircle className="w-3 h-3" /> En préparation
-                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-full text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-600 hover:text-white mb-1"
+                                  onClick={() => handleMarkAsShipped(order.id)}
+                                >
+                                  Expédier
+                                </Button>
                               )}
-                              {order.status === 'completed' && (
+                              {order.status === 'shipped' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-full text-[10px] bg-yarid-blue/10 text-yarid-blue border-yarid-blue/20 hover:bg-yarid-blue hover:text-white gap-2"
+                                  onClick={() => setSelectedOrderToVerify(order)}
+                                >
+                                  <QrCode className="w-3 h-3" />
+                                  Vérifier Livraison
+                                </Button>
+                              )}
+                              {order.status === 'delivered' && (
                                 <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
-                                  <CheckCircle className="w-3 h-3" /> Terminé
+                                  <CheckCircle className="w-3 h-3" /> Livrée
                                 </span>
                               )}
                               {order.status === 'paid' && (
@@ -1251,6 +1336,52 @@ const VendorDashboard = () => {
       </main>
 
       <Footer />
+
+      <Dialog open={!!selectedOrderToVerify} onOpenChange={() => { setSelectedOrderToVerify(null); setVerificationCode(''); }}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-center">Confirmation de Livraison</DialogTitle>
+            <DialogDescription className="text-center">
+              Veuillez scanner le QR Code du client ou saisir le code secret pour confirmer la réception de la commande <span className="font-bold">#{selectedOrderToVerify?.order_number}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="p-8 bg-muted/30 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-center">
+              <Truck className="w-12 h-12 text-primary mb-4 animate-bounce" />
+              <p className="text-sm font-medium text-muted-foreground">Scannez le code sur le téléphone du client pour débloquer les fonds.</p>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-sm font-bold ml-1">Code de confirmation manuel</Label>
+              <div className="relative group">
+                <QrCode className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Input
+                  placeholder="Saisir le code secret..."
+                  className="h-14 pl-12 rounded-2xl border-none bg-muted/50 font-mono text-lg tracking-wider"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between gap-4">
+            <Button
+              variant="secondary"
+              className="rounded-2xl h-14 font-bold flex-1"
+              onClick={() => { setSelectedOrderToVerify(null); setVerificationCode(''); }}
+            >
+              Annuler
+            </Button>
+            <Button
+              className="rounded-2xl h-14 font-black text-lg flex-[2] shadow-xl shadow-primary/20"
+              onClick={handleVerifyDelivery}
+              disabled={!verificationCode}
+            >
+              Confirmer Livraison
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
