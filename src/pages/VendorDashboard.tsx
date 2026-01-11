@@ -641,21 +641,21 @@ const VendorDashboard = () => {
                 <ShieldCheck className="w-8 h-8 text-primary" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-foreground">Système de paiement centralisé (Escrow)</h2>
+                <h2 className="text-xl font-bold text-foreground">Logistique & Paiements centralisés</h2>
                 <div className="text-sm text-muted-foreground leading-relaxed max-w-4xl">
-                  <p>Tous les paiements des clients sont temporairement sécurisés sur les comptes <span className="font-bold text-primary">YARID</span>.
-                    Les fonds sont automatiquement débloqués et transférés vers votre compte après :</p>
+                  <p>La logistique et la livraison de vos commandes sont <span className="font-bold text-primary">entièrement prises en charge par YARID</span>.
+                    Les paiements sont sécurisés et vous sont transférés automatiquement après :</p>
                   <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-1 mt-2 font-medium text-foreground/80">
                     <li className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      La confirmation de livraison
+                      La livraison effectuée par nos services
                     </li>
                     <li className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      La validation de la qualité du produit par le client
+                      La validation de conformité par le client
                     </li>
                   </ul>
-                  <p className="mt-2 text-xs italic opacity-80">Ce mécanisme garantit la sécurité des transactions et renforce la confiance des acheteurs envers votre boutique.</p>
+                  <p className="mt-2 text-xs italic opacity-80">Ce service complet vous permet de vous concentrer uniquement sur vos produits pendant que nous gérons le reste.</p>
                 </div>
               </div>
             </div>

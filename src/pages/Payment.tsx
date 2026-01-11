@@ -509,9 +509,9 @@ const Payment = () => {
                     <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
                       <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                       <div className="text-sm">
-                        <p className="font-bold text-primary mb-1">Paiement 100% sécurisé (Escrow)</p>
+                        <p className="font-bold text-primary mb-1">Paiement 100% sécurisé & Logistique YARID</p>
                         <p className="text-muted-foreground leading-relaxed">
-                          « Pour votre sécurité, tous les paiements sont effectués directement sur les comptes sécurisés de <span className="font-bold text-foreground">YARID</span>. Les vendeurs ne reçoivent les fonds qu'après la livraison du produit et la validation de sa conformité. »
+                          « Pour votre sécurité, tous les paiements sont centralisés par <span className="font-bold text-foreground">YARID</span>. La logistique et la livraison sont entièrement prises en charge par nos services. Les vendeurs ne reçoivent les fonds qu'après confirmation de la livraison et validation de la conformité du produit. »
                         </p>
                       </div>
                     </div>
