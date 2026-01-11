@@ -373,7 +373,7 @@ const VendorDashboard = () => {
     }
   };
 
-  const handleValidatePayment = async (orderId: string) => {
+  const handleConfirmAvailability = async (orderId: string) => {
     try {
       const { error } = await supabase
         .from('orders')
@@ -384,10 +384,31 @@ const VendorDashboard = () => {
 
       if (error) throw error;
 
-      toast.success('Commande confirmée ! Passage en préparation.');
+      toast.success('Disponibilité confirmée ! YARID a été notifié pour le ramassage.');
       if (vendorId) fetchOrders(vendorId);
     } catch (error: any) {
-      toast.error('Erreur lors de la validation: ' + error.message);
+      toast.error('Erreur lors de la confirmation: ' + error.message);
+    }
+  };
+
+  const handleMarkUnavailable = async (orderId: string) => {
+    if (!confirm('Voulez-vous vraiment marquer cet article comme indisponible ? La commande sera annulée.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          vendor_notes: 'Article marqué comme indisponible par le vendeur.'
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.info('Commande annulée. Le client et YARID ont été informés.');
+      if (vendorId) fetchOrders(vendorId);
+    } catch (error: any) {
+      toast.error('Erreur lors de l\'annulation: ' + error.message);
     }
   };
 
@@ -1023,14 +1044,24 @@ const VendorDashboard = () => {
                             </td>
                             <td className="px-4 py-4 text-center">
                               {order.status === 'pending' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-[10px] bg-yarid-green/10 text-yarid-green border-yarid-green/20 hover:bg-yarid-green hover:text-white"
-                                  onClick={() => handleValidatePayment(order.id)}
-                                >
-                                  Confirmer paiement
-                                </Button>
+                                <div className="flex flex-col gap-1 items-center">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-full text-[10px] bg-yarid-green/10 text-yarid-green border-yarid-green/20 hover:bg-yarid-green hover:text-white"
+                                    onClick={() => handleConfirmAvailability(order.id)}
+                                  >
+                                    Confirmer disponibilité
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-full text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => handleMarkUnavailable(order.id)}
+                                  >
+                                    Indisponible
+                                  </Button>
+                                </div>
                               )}
                               {order.status === 'processing' && (
                                 <span className="text-[10px] text-blue-600 font-medium flex items-center justify-center gap-1">
@@ -1052,10 +1083,15 @@ const VendorDashboard = () => {
                                   size="sm"
                                   variant="outline"
                                   className="h-8 text-[10px] bg-orange-100 text-orange-600 border-orange-200 hover:bg-orange-600 hover:text-white"
-                                  onClick={() => handleValidatePayment(order.id)}
+                                  onClick={() => handleConfirmAvailability(order.id)}
                                 >
-                                  Vérifier paiement
+                                  Prêt pour ramassage
                                 </Button>
+                              )}
+                              {order.status === 'cancelled' && (
+                                <span className="text-[10px] text-red-500 font-medium flex items-center justify-center gap-1">
+                                  <XCircle className="w-3 h-3" /> Annulée
+                                </span>
                               )}
                             </td>
                             <td className="px-4 py-4 text-right text-muted-foreground text-xs">
