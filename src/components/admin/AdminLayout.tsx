@@ -95,7 +95,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     if (!isAdmin) return null;
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex overflow-hidden">
+        <div className="h-screen bg-[#F8FAFC] flex overflow-hidden">
             {/* Sidebar */}
             <aside
                 className={`fixed inset-y-0 left-0 bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out lg:relative ${isSidebarOpen ? 'w-72 translate-x-0 pointer-events-auto' : '-translate-x-full w-72 lg:w-20 lg:translate-x-0 pointer-events-none'}`}
@@ -114,7 +114,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     </div>
 
                     {/* Navigation Items */}
-                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
+                    <nav className="flex-1 overflow-hidden py-6 px-4 space-y-1">
                         {menuItems.map((item) => {
                             const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
                             return (
