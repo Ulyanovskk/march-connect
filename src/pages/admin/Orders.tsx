@@ -420,7 +420,7 @@ const AdminOrders = () => {
                                         <TableCell>
                                             <div>
                                                 <p className="font-black text-slate-800 text-sm leading-none flex items-center gap-2">
-                                                    #{order.id.substring(0, 8).toUpperCase()}
+                                                    {order.order_number ? order.order_number : `#${order.id.substring(0, 8).toUpperCase()}`}
                                                     <FileText className="w-3 h-3 text-slate-300 group-hover:text-primary transition-colors" />
                                                 </p>
                                                 <p className="text-[11px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
@@ -479,7 +479,7 @@ const AdminOrders = () => {
                         <DialogHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <DialogTitle className="text-2xl font-black text-slate-800">Commande #{selectedOrder.id.substring(0, 8).toUpperCase()}</DialogTitle>
+                                    <DialogTitle className="text-2xl font-black text-slate-800">Commande {selectedOrder.order_number ? selectedOrder.order_number : `#${selectedOrder.id.substring(0, 8).toUpperCase()}`}</DialogTitle>
                                     <DialogDescription className="text-slate-500 font-medium">
                                         Passée le {format(new Date(selectedOrder.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
                                     </DialogDescription>
