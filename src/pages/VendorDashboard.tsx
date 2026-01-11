@@ -1094,13 +1094,12 @@ const VendorDashboard = () => {
           </TabsContent>
 
           {/* Orders Tab */}
-          <TabsContent value="orders">
-            {/* Existing Orders Table Content */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Commandes de ma boutique ({orders.length})</CardTitle>
+          <TabsContent value="orders" className="mt-2 focus-visible:outline-none focus:outline-none outline-none">
+            <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-black text-foreground">Commandes de ma boutique ({orders.length})</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 md:p-6">
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 gap-4">
                     <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -1112,118 +1111,224 @@ const VendorDashboard = () => {
                     <p className="text-muted-foreground">Pas encore de commandes pour vos produits.</p>
                   </div>
                 ) : (
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 rounded-lg">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-semibold">Commande</th>
-                          <th className="px-4 py-3 text-left font-semibold">Client</th>
-                          <th className="px-4 py-3 text-left font-semibold">Montant</th>
-                          <th className="px-4 py-3 text-left font-semibold">Statut</th>
-                          <th className="px-4 py-3 text-center font-semibold">Actions</th>
-                          <th className="px-4 py-3 text-right font-semibold">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {orders.map((order) => (
-                          <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                            <td className="px-4 py-4">
-                              <button
-                                onClick={() => setSelectedOrderDetails(order)}
-                                className="font-mono font-bold text-xs text-primary hover:underline flex items-center gap-1"
-                              >
-                                #{order.order_number || order.id.substring(0, 8)}
-                                <Eye className="w-3 h-3 opacity-50" />
-                              </button>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex flex-col">
-                                <span className="font-medium">{order.customer_name}</span>
-                                <span className="text-[10px] text-muted-foreground">{order.customer_phone}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 font-semibold">
-                              {formatPrice(order.total)}
-                            </td>
-                            <td className="px-4 py-4">
-                              {getStatusBadge(order.payment_status || order.status)}
-                            </td>
-                            <td className="px-4 py-4 text-center">
-                              {order.status === 'pending' && (
-                                <div className="flex flex-col gap-1 items-center">
+                  <>
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 rounded-lg">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold">Commande</th>
+                            <th className="px-4 py-3 text-left font-semibold">Client</th>
+                            <th className="px-4 py-3 text-left font-semibold">Montant</th>
+                            <th className="px-4 py-3 text-left font-semibold">Statut</th>
+                            <th className="px-4 py-3 text-center font-semibold">Actions</th>
+                            <th className="px-4 py-3 text-right font-semibold">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {orders.map((order) => (
+                            <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-4">
+                                <button
+                                  onClick={() => setSelectedOrderDetails(order)}
+                                  className="font-mono font-bold text-xs text-primary hover:underline flex items-center gap-1"
+                                >
+                                  #{order.order_number || order.id.substring(0, 8)}
+                                  <Eye className="w-3 h-3 opacity-50" />
+                                </button>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{order.customer_name}</span>
+                                  <span className="text-[10px] text-muted-foreground">{order.customer_phone}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 font-semibold">
+                                {formatPrice(order.total)}
+                              </td>
+                              <td className="px-4 py-4">
+                                {getStatusBadge(order.payment_status || order.status)}
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                {order.status === 'pending' && (
+                                  <div className="flex flex-col gap-1 items-center">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-full text-[10px] bg-yarid-green/10 text-yarid-green border-yarid-green/20 hover:bg-yarid-green hover:text-white"
+                                      onClick={() => handleConfirmAvailability(order.id)}
+                                    >
+                                      Confirmer disponibilité
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-full text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50"
+                                      onClick={() => handleMarkUnavailable(order.id)}
+                                    >
+                                      Indisponible
+                                    </Button>
+                                  </div>
+                                )}
+                                {order.status === 'processing' && (
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 w-full text-[10px] bg-yarid-green/10 text-yarid-green border-yarid-green/20 hover:bg-yarid-green hover:text-white"
-                                    onClick={() => handleConfirmAvailability(order.id)}
+                                    className="h-8 w-full text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-600 hover:text-white mb-1"
+                                    onClick={() => handleMarkAsShipped(order.id)}
                                   >
-                                    Confirmer disponibilité
+                                    Expédier
                                   </Button>
+                                )}
+                                {order.status === 'shipped' && (
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="h-7 w-full text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    variant="outline"
+                                    className="h-8 w-full text-[10px] bg-yarid-blue/10 text-yarid-blue border-yarid-blue/20 hover:bg-yarid-blue hover:text-white gap-2"
+                                    onClick={() => setSelectedOrderToVerify(order)}
+                                  >
+                                    <QrCode className="w-3 h-3" />
+                                    Vérifier Livraison
+                                  </Button>
+                                )}
+                                {order.status === 'delivered' && (
+                                  <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
+                                    <CheckCircle className="w-3 h-3" /> Livrée
+                                  </span>
+                                )}
+                                {order.status === 'paid' && (
+                                  <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
+                                    <CheckCircle className="w-3 h-3" /> Payé
+                                  </span>
+                                )}
+                                {order.status === 'pending_verification' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-[10px] bg-orange-100 text-orange-600 border-orange-200 hover:bg-orange-600 hover:text-white"
+                                    onClick={() => handleConfirmAvailability(order.id)}
+                                  >
+                                    Prêt pour ramassage
+                                  </Button>
+                                )}
+                                {order.status === 'cancelled' && (
+                                  <span className="text-[10px] text-red-500 font-medium flex items-center justify-center gap-1">
+                                    <XCircle className="w-3 h-3" /> Annulée
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 text-right text-muted-foreground text-xs">
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile View (Cards) */}
+                    <div className="md:hidden space-y-4">
+                      {orders.map((order) => (
+                        <Card key={order.id} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white border border-muted-foreground/5 group">
+                          <div className="p-5">
+                            {/* Ticket Header */}
+                            <div className="flex items-center justify-between mb-5 pb-3 border-b border-dashed">
+                              <div className="flex items-center gap-2">
+                                <div className="w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center">
+                                  <Package className="w-4 h-4 text-primary" />
+                                </div>
+                                <button
+                                  onClick={() => setSelectedOrderDetails(order)}
+                                  className="text-left"
+                                >
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">RÉFÉRENCE</p>
+                                  <p className="font-mono font-bold text-xs text-primary underline decoration-primary/30">#{order.order_number || order.id.substring(0, 8)}</p>
+                                </button>
+                              </div>
+                              <div className="shrink-0 scale-90 origin-right">
+                                {getStatusBadge(order.payment_status || order.status)}
+                              </div>
+                            </div>
+
+                            {/* Customer & Price */}
+                            <div className="grid grid-cols-2 gap-4 mb-5">
+                              <div className="space-y-1">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none">CLIENT</p>
+                                <p className="font-black text-sm text-foreground truncate">{order.customer_name}</p>
+                                <p className="text-[10px] text-muted-foreground font-medium">{order.customer_phone}</p>
+                              </div>
+                              <div className="text-right space-y-1">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none">MONTANT</p>
+                                <p className="text-lg font-black text-primary tracking-tight">{formatPrice(order.total)}</p>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="space-y-2">
+                              {order.status === 'pending' && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    className="flex-1 h-12 rounded-2xl font-black bg-primary hover:bg-primary/90 text-white text-[11px] shadow-lg shadow-primary/20 border-none transition-all active:scale-95"
+                                    onClick={() => handleConfirmAvailability(order.id)}
+                                  >
+                                    CONFIRMER L'ORDRE
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    className="flex-1 h-11 rounded-xl font-bold text-red-500 border-red-50 hover:bg-red-50 text-[11px]"
                                     onClick={() => handleMarkUnavailable(order.id)}
                                   >
                                     Indisponible
                                   </Button>
                                 </div>
                               )}
+
                               {order.status === 'processing' && (
                                 <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-full text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-600 hover:text-white mb-1"
+                                  className="w-full h-11 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                                   onClick={() => handleMarkAsShipped(order.id)}
                                 >
-                                  Expédier
+                                  Expédier la commande
                                 </Button>
                               )}
+
                               {order.status === 'shipped' && (
                                 <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-full text-[10px] bg-yarid-blue/10 text-yarid-blue border-yarid-blue/20 hover:bg-yarid-blue hover:text-white gap-2"
+                                  className="w-full h-11 rounded-xl font-black bg-yarid-blue hover:bg-yarid-blue/90 text-white gap-2 shadow-lg shadow-yarid-blue/10"
                                   onClick={() => setSelectedOrderToVerify(order)}
                                 >
-                                  <QrCode className="w-3 h-3" />
-                                  Vérifier Livraison
+                                  <QrCode className="w-4 h-4" />
+                                  Scanner Livraison
                                 </Button>
                               )}
-                              {order.status === 'delivered' && (
-                                <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
-                                  <CheckCircle className="w-3 h-3" /> Livrée
-                                </span>
-                              )}
-                              {order.status === 'paid' && (
-                                <span className="text-[10px] text-yarid-green font-medium flex items-center justify-center gap-1">
-                                  <CheckCircle className="w-3 h-3" /> Payé
-                                </span>
-                              )}
+
                               {order.status === 'pending_verification' && (
                                 <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-[10px] bg-orange-100 text-orange-600 border-orange-200 hover:bg-orange-600 hover:text-white"
+                                  className="w-full h-11 rounded-xl font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-md border-none"
                                   onClick={() => handleConfirmAvailability(order.id)}
                                 >
                                   Prêt pour ramassage
                                 </Button>
                               )}
-                              {order.status === 'cancelled' && (
-                                <span className="text-[10px] text-red-500 font-medium flex items-center justify-center gap-1">
-                                  <XCircle className="w-3 h-3" /> Annulée
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 text-right text-muted-foreground text-xs">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+
+                              <Button
+                                variant="ghost"
+                                className="w-full h-11 rounded-xl font-bold text-muted-foreground text-xs hover:bg-muted/50"
+                                onClick={() => setSelectedOrderDetails(order)}
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-2" />
+                                Voir les détails
+                              </Button>
+                            </div>
+
+                            <div className="mt-4 pt-3 border-t border-muted/50 flex justify-center italic text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                              <Calendar className="w-3 h-3 mr-1.5" />
+                              Reçue le {new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
