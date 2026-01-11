@@ -65,6 +65,7 @@ type Order = {
   vendor_id: string | null;
   currency: string;
   customer_whatsapp: string | null;
+  order_number: string | null;
   delivery_notes: string | null;
 };
 
@@ -1026,8 +1027,8 @@ const VendorDashboard = () => {
                         {orders.map((order) => (
                           <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-4">
-                              <span className="font-mono font-medium text-xs text-primary">
-                                {order.id.substring(0, 8)}
+                              <span className="font-mono font-bold text-xs text-primary">
+                                #{order.order_number || order.id.substring(0, 8)}
                               </span>
                             </td>
                             <td className="px-4 py-4">
