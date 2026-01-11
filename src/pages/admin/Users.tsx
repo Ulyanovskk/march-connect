@@ -47,7 +47,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { createClient } from '@supabase/supabase-js';
 
+import { Separator } from "@/components/ui/separator";
+import { formatPrice } from "@/lib/demo-data";
+
 // Create a secondary client for admin creation to avoid current session logout
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const creationClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -62,6 +66,9 @@ const AdminUsers = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [userStats, setUserStats] = useState({ ordersCount: 0, totalSpent: 0 });
     const [filter, setFilter] = useState<'all' | 'active' | 'blocked'>('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [creatingAdmin, setCreatingAdmin] = useState(false);
@@ -113,6 +120,30 @@ const AdminUsers = () => {
         }
     };
 
+    const fetchUserStats = async (userId: string) => {
+        try {
+            const { count, data } = await supabase
+                .from('orders')
+                .select('total_amount', { count: 'exact' })
+                .eq('user_id', userId);
+
+            const total = data?.reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0) || 0;
+
+            setUserStats({
+                ordersCount: count || 0,
+                totalSpent: total
+            });
+        } catch (error) {
+            console.error("Error fetching user stats", error);
+        }
+    };
+
+    const handleViewUser = (user: any) => {
+        setSelectedUser(user);
+        setIsDetailsOpen(true);
+        fetchUserStats(user.id);
+    };
+
     const handleBlockUser = async (userId: string, isCurrentlyBlocked: boolean) => {
         const confirmMsg = isCurrentlyBlocked
             ? "Voulez-vous débloquer cet utilisateur ?"
@@ -126,15 +157,22 @@ const AdminUsers = () => {
                 .update({ is_blocked: !isCurrentlyBlocked } as any)
                 .eq('id', userId);
 
+            if (error) throw error;
+
             toast.success(isCurrentlyBlocked ? "Utilisateur débloqué" : "Utilisateur bloqué");
+
+            if (selectedUser?.id === userId) {
+                setSelectedUser({ ...selectedUser, is_blocked: !isCurrentlyBlocked });
+            }
+
             fetchUsers();
         } catch (error: any) {
-            toast.error("Erreur action utilisateur");
+            toast.error("Erreur action utilisateur: " + error.message);
         }
     };
 
     const handleToggleAdmin = async (userId: string, currentRoles: any[]) => {
-        const isAdmin = currentRoles.some(r => r.role === 'admin');
+        const isAdmin = currentRoles?.some(r => r.role === 'admin');
         const confirmMsg = isAdmin
             ? "Voulez-vous retirer les droits d'administrateur à cet utilisateur ?"
             : "Voulez-vous promouvoir cet utilisateur au rang d'administrateur ? Il aura accès à tout le dashboard admin.";
@@ -159,7 +197,11 @@ const AdminUsers = () => {
                 if (error) throw error;
                 toast.success("Utilisateur promu Administrateur");
             }
+
+            // Refresh to get updated roles
             fetchUsers();
+            // Note: Updating local selectedUser user_roles is complex without re-fetching, so relying on fetchUsers
+            setIsDetailsOpen(false); // Close dialog to force refresh view
         } catch (error: any) {
             toast.error("Erreur lors de la modification des droits : " + error.message);
         }
@@ -216,8 +258,8 @@ const AdminUsers = () => {
             user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.phone?.includes(searchTerm);
 
-        // Note: status filter is symbolic here as we don't have a 'status' column in profiles yet
-        // In a real app, you'd have an 'is_blocked' column
+        if (filter === 'active') return matchesSearch && !user.is_blocked;
+        if (filter === 'blocked') return matchesSearch && user.is_blocked;
         return matchesSearch;
     });
 
@@ -295,7 +337,11 @@ const AdminUsers = () => {
                                 ))
                             ) : filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => (
-                                    <TableRow key={user.id} className="hover:bg-slate-50/50 transition-colors border-slate-50">
+                                    <TableRow
+                                        key={user.id}
+                                        className="hover:bg-slate-50/50 transition-colors border-slate-50 group cursor-pointer"
+                                        onClick={() => handleViewUser(user)}
+                                    >
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="w-10 h-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
@@ -331,47 +377,22 @@ const AdminUsers = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                Actif
-                                            </Badge>
+                                            {user.is_blocked ? (
+                                                <Badge className="bg-red-50 text-red-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    Bloqué
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    Actif
+                                                </Badge>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
-                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-slate-100 p-1">
-                                                    <DropdownMenuItem
-                                                        onClick={() => toast.info(`Profil de ${user.full_name || 'utilisateur'}`)}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <Eye className="w-4 h-4" /> Détails Compte
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => toast.info("Historique bientôt disponible")}
-                                                        className="rounded-lg gap-2 font-bold text-slate-600"
-                                                    >
-                                                        <ShoppingCart className="w-4 h-4" /> Historique Commandes
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleToggleAdmin(user.id, user.user_roles || [])}
-                                                        className="rounded-lg gap-2 font-bold text-primary"
-                                                    >
-                                                        <Shield className="w-4 h-4" />
-                                                        {user.user_roles?.some((r: any) => r.role === 'admin') ? "Retirer Admin" : "Promouvoir Admin"}
-                                                    </DropdownMenuItem>
-                                                    <div className="h-px bg-slate-100 my-1"></div>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleBlockUser(user.id, false)}
-                                                        className="rounded-lg gap-2 font-bold text-red-600 focus:text-red-600 focus:bg-red-50"
-                                                    >
-                                                        <UserX className="w-4 h-4" /> Bloquer l'utilisateur
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
+                                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -471,7 +492,109 @@ const AdminUsers = () => {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                {/* User Details Dialog */}
+                {selectedUser && (
+                    <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="w-16 h-16 border-2 border-white shadow-md rounded-2xl">
+                                        <AvatarFallback className="bg-primary/5 text-primary text-xl font-black uppercase rounded-2xl">
+                                            {selectedUser.full_name?.substring(0, 2) || 'CL'}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <DialogTitle className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                            {selectedUser.full_name || 'Utilisateur'}
+                                            {selectedUser.user_roles?.some((r: any) => r.role === 'admin') &&
+                                                <Badge className="bg-primary/10 text-primary border-none text-xs">Admin</Badge>
+                                            }
+                                        </DialogTitle>
+                                        <DialogDescription className="text-slate-500 font-medium">
+                                            ID: {selectedUser.id}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            <div className="space-y-6 py-4">
+                                {/* Actions Area */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <Button
+                                        className={`${selectedUser.is_blocked ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-50 text-red-600 hover:bg-red-100'} h-12 rounded-xl text-xs font-bold border-red-100`}
+                                        onClick={() => handleBlockUser(selectedUser.id, selectedUser.is_blocked || false)}
+                                    >
+                                        {selectedUser.is_blocked ? <UserCheck className="w-3.5 h-3.5 mr-2" /> : <UserX className="w-3.5 h-3.5 mr-2" />}
+                                        {selectedUser.is_blocked ? 'Débloquer' : 'Bloquer'}
+                                    </Button>
+                                    <Button
+                                        className={`bg-indigo-600 hover:bg-indigo-700 h-12 rounded-xl text-xs font-bold`}
+                                        onClick={() => handleToggleAdmin(selectedUser.id, selectedUser.user_roles || [])}
+                                    >
+                                        <Shield className="w-3.5 h-3.5 mr-2" />
+                                        {selectedUser.user_roles?.some((r: any) => r.role === 'admin') ? "Révoquer Admin" : "Promouvoir Admin"}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="h-12 rounded-xl text-xs font-bold text-slate-600"
+                                        onClick={() => toast.info('Historique complet bientôt disponible')}
+                                    >
+                                        <ShoppingCart className="w-3.5 h-3.5 mr-2" /> Voir Commandes
+                                    </Button>
+                                </div>
+
+                                <Separator />
+
+                                {/* Stats Overview */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Commandes</p>
+                                        <p className="text-2xl font-black text-slate-800">{userStats.ordersCount}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Dépensé (Est.)</p>
+                                        <p className="text-2xl font-black text-primary">{formatPrice(userStats.totalSpent)}</p>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Personal Info */}
+                                <div className="space-y-4">
+                                    <h3 className="font-bold flex items-center gap-2">
+                                        <UserCheck className="w-4 h-4 text-primary" /> Informations Personnelles
+                                    </h3>
+                                    <div className="bg-white border border-slate-100 rounded-xl overflow-hidden text-sm">
+                                        <div className="flex border-b border-slate-50 last:border-0">
+                                            <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Email</div>
+                                            <div className="w-2/3 p-3 font-medium text-slate-800">{selectedUser.email || 'Non renseigné'}</div>
+                                        </div>
+                                        <div className="flex border-b border-slate-50 last:border-0">
+                                            <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Téléphone</div>
+                                            <div className="w-2/3 p-3 font-medium text-slate-800">{selectedUser.phone || 'Non renseigné'}</div>
+                                        </div>
+                                        <div className="flex border-b border-slate-50 last:border-0">
+                                            <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Inscrit le</div>
+                                            <div className="w-2/3 p-3 text-slate-800">{selectedUser.created_at ? format(new Date(selectedUser.created_at), 'dd/MM/yyyy à HH:mm', { locale: fr }) : 'N/A'}</div>
+                                        </div>
+                                        <div className="flex border-b border-slate-50 last:border-0">
+                                            <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Statut</div>
+                                            <div className="w-2/3 p-3 text-slate-800 font-bold">
+                                                {selectedUser.is_blocked
+                                                    ? <span className="text-red-500">Compte Bloqué</span>
+                                                    : <span className="text-emerald-500">Compte Actif</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                )}
             </div>
+
         </AdminLayout>
     );
 };

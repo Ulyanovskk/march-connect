@@ -70,10 +70,17 @@ const AdminDashboard = () => {
                     console.error('Error fetching orders:', ordersError);
                 }
 
-                // Calculate revenue using total_amount (and fallback to total if exists)
+                // Calculate revenue strictly for valid sales (Paid and not Cancelled/Returned)
                 const totalRev = ordersData?.reduce((acc, order) => {
-                    const amount = Number(order.total_amount) || Number(order.total) || 0;
-                    return acc + amount;
+                    const isValidSale = order.payment_status === 'paid' &&
+                        order.status !== 'cancelled' &&
+                        order.status !== 'returned';
+
+                    if (isValidSale) {
+                        const amount = Number(order.total_amount) || Number(order.total) || 0;
+                        return acc + amount;
+                    }
+                    return acc;
                 }, 0) || 0;
                 const pendingEscrow = ordersData?.filter(o => o.payment_status === 'paid' && o.status !== 'delivered')
                     .reduce((acc, order) => {
