@@ -51,15 +51,35 @@ const AdminDashboard = () => {
             try {
                 setLoading(true);
 
+                // Refresh session to ensure admin rights are recognized
+                await supabase.auth.refreshSession();
+
                 // Fetch counts
                 const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
                 const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true });
                 const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
-                const { data: ordersData } = await supabase.from('orders').select('total, status, payment_status, created_at');
 
-                const totalRev = ordersData?.reduce((acc, order) => acc + (Number(order.total) || 0), 0) || 0;
+                // Fetch orders with total_amount matching Payment.tsx
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*, total_amount')
+                    .order('created_at', { ascending: false })
+                    .limit(5000);
+
+                if (ordersError) {
+                    console.error('Error fetching orders:', ordersError);
+                }
+
+                // Calculate revenue using total_amount (and fallback to total if exists)
+                const totalRev = ordersData?.reduce((acc, order) => {
+                    const amount = Number(order.total_amount) || Number(order.total) || 0;
+                    return acc + amount;
+                }, 0) || 0;
                 const pendingEscrow = ordersData?.filter(o => o.payment_status === 'paid' && o.status !== 'delivered')
-                    .reduce((acc, order) => acc + (Number(order.total) || 0), 0) || 0;
+                    .reduce((acc, order) => {
+                        const amount = Number(order.total_amount) || Number(order.total) || 0;
+                        return acc + amount;
+                    }, 0) || 0;
 
                 const deliveryPending = ordersData?.filter(o => o.status === 'processing' || o.status === 'shipped').length || 0;
                 const problems = ordersData?.filter(o => o.status === 'cancelled' || o.payment_status === 'failed').length || 0;
@@ -82,7 +102,10 @@ const AdminDashboard = () => {
                     const dayLabel = format(date, 'EEE', { locale: fr });
 
                     const dayOrders = ordersData?.filter(o => format(new Date(o.created_at), 'yyyy-MM-dd') === dayStr);
-                    const dayRevenue = dayOrders?.reduce((acc, o) => acc + (Number(o.total) || 0), 0) || 0;
+                    const dayRevenue = dayOrders?.reduce((acc, o) => {
+                        const amount = Number(o.total_amount) || Number(o.total) || 0;
+                        return acc + amount;
+                    }, 0) || 0;
 
                     return { name: dayLabel, revenue: dayRevenue, orders: dayOrders?.length || 0 };
                 });
