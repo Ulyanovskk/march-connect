@@ -7,4 +7,6 @@ verify_jwt = false
 verify_jwt = false
 
 [auth]
+# Leaked password protection (HIBP)
 pwned_password_protection_enabled = true
+enable_pwned_passwords = true
