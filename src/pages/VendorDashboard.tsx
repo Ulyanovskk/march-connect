@@ -642,35 +642,12 @@ const VendorDashboard = () => {
     }
   };
 
-  // Real stats calculation with actual view tracking
-  const [realViews, setRealViews] = useState<number>(0);
-
   const stats = {
     totalRevenue: orders.reduce((acc, order) => acc + (Number(order.total || 0)), 0),
     totalOrders: orders.length,
-    totalViews: realViews, // Real view count from database
+    totalViews: products.reduce((acc, p) => acc + (p.views || 0), 0),
     activeProducts: products.filter(p => p.is_active).length,
   };
-
-  // Fetch real view statistics
-  useEffect(() => {
-    const loadViewStats = async () => {
-      if (vendorId) {
-        try {
-          console.log('🔍 Loading view stats for vendor:', vendorId);
-          const viewStats = await fetchVendorViewStats(vendorId);
-          console.log('📊 View stats loaded:', viewStats);
-          setRealViews(viewStats.totalViews);
-        } catch (error) {
-          console.error('❌ Could not load view stats:', error);
-          // Keep 0 as fallback
-          setRealViews(0);
-        }
-      }
-    };
-
-    loadViewStats();
-  }, [vendorId, products]);
 
   // Simulated data for charts
   const salesHistory = Array.from({ length: 7 }, (_, i) => {

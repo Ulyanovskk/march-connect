@@ -233,7 +233,7 @@ const ProductDetail = () => {
                   <span>(24 avis)</span>
                 </div>
                 <span>•</span>
-                <span>128 vues</span>
+                <span>{product.views || 0} vues</span>
               </div>
             </div>
 
