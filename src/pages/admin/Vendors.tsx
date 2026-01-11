@@ -100,14 +100,45 @@ const AdminVendors = () => {
                 .select('*', { count: 'exact', head: true })
                 .eq('vendor_id', vendorId);
 
-            // Count orders directly linked to this vendor
-            const { count: ordersCount, data: orders } = await supabase
-                .from('orders')
-                .select('total_amount')
+            // Fetch vendor commission rate
+            const { data: vendorData } = await supabase
+                .from('vendors')
+                .select('commission_rate')
+                .eq('id', vendorId)
+                .single();
+
+            const commissionRate = (vendorData?.commission_rate || 10) / 100;
+
+            // Fetch order items for this vendor
+            const { data: items, error: itemsError } = await supabase
+                .from('order_items')
+                .select('order_id, total_price, orders!inner(payment_status, status)')
                 .eq('vendor_id', vendorId);
 
-            // Calculate revenue (simple sum of order totals for this vendor)
-            const revenue = orders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
+            if (itemsError) throw itemsError;
+
+            // Calculate Net Revenue (Escrow Released & Delivered)
+            // Logic: Only delivered orders => Funds released from escrow
+            // Amount: Total Price - Commission (Net to Vendor)
+            const deliveredItems = items?.filter(item =>
+                (item.orders as any)?.status === 'delivered' &&
+                ((item.orders as any)?.payment_status === 'paid' || (item.orders as any)?.payment_status === 'completed')
+            ) || [];
+
+            // Sum Net (Total * (1 - Rate))
+            const revenue = deliveredItems.reduce((sum, item) => {
+                const itemTotal = Number(item.total_price) || 0;
+                const netAmount = itemTotal * (1 - commissionRate);
+                return sum + netAmount;
+            }, 0);
+
+            // Count unique orders (All Valid Orders, not just delivered, for generic stat)
+            const allValidItems = items?.filter(item =>
+                (item.orders as any)?.payment_status === 'paid' ||
+                (item.orders as any)?.payment_status === 'completed'
+            ) || [];
+            const uniqueOrderIds = new Set(allValidItems.map(i => i.order_id));
+            const ordersCount = uniqueOrderIds.size;
 
             setVendorStats({
                 products: productsCount || 0,
