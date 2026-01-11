@@ -35,6 +35,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     const location = useLocation();
     const navigate = useNavigate();
 
+    // Check admin role and set admin state
     useEffect(() => {
         const checkAdmin = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -42,14 +43,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 navigate('/login');
                 return;
             }
-
             const { data: roles } = await supabase
                 .from('user_roles')
                 .select('role')
                 .eq('user_id', session.user.id);
-
             const hasAdminRole = roles?.some(r => r.role === 'admin');
-
             if (!hasAdminRole) {
                 toast.error("Accès non autorisé");
                 navigate('/');
@@ -57,9 +55,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 setIsAdmin(true);
             }
         };
-
         checkAdmin();
     }, [navigate]);
+
+    // Responsive sidebar: set initial state based on screen width
+    useEffect(() => {
+        if (window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        } else {
+            setIsSidebarOpen(true);
+        }
+    }, []);
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Tableau de bord', id: 'dashboard', path: '/admin' },
@@ -79,14 +85,20 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         navigate('/login');
     };
 
+    // Close sidebar on route change (mobile)
+    useEffect(() => {
+        if (window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        }
+    }, [location.pathname]);
+
     if (!isAdmin) return null;
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex overflow-hidden">
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'w-72' : 'w-0 -translate-x-full lg:w-20 lg:translate-x-0'
-                    }`}
+                className={`fixed inset-y-0 left-0 bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out lg:relative ${isSidebarOpen ? 'w-72 translate-x-0 pointer-events-auto' : '-translate-x-full w-72 lg:w-20 lg:translate-x-0 pointer-events-none'}`}
             >
                 <div className="flex flex-col h-full">
                     {/* Sidebar Header */}
@@ -146,17 +158,24 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     </div>
                 </div>
             </aside>
+            {/* Mobile backdrop */}
+            {isSidebarOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 bg-black/30 z-40"
+                    onClick={() => setIsSidebarOpen(false)}
+                ></div>
+            )}
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
-                <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-40">
+                <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-50 overflow-hidden">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="lg:flex text-slate-500 hover:bg-slate-50"
+                            className="flex lg:hidden text-slate-500 hover:bg-slate-50 rounded-xl z-50"
                         >
                             {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </Button>
