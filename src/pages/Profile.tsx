@@ -228,16 +228,15 @@ const Profile = () => {
                     <div className="absolute top-12 -right-12 w-48 h-48 bg-black/10 rounded-full blur-2xl" />
                 </div>
 
-                <div className="container mx-auto px-4 -mt-20 relative z-10 pb-20">
-                    <div className="grid lg:grid-cols-12 gap-8">
+                <div className="container mx-auto px-4 -mt-24 relative z-10 pb-20">
+                    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8">
 
-                        {/* LEFT COLUMN: NAVIGATION */}
-                        <aside className="lg:col-span-3 space-y-6">
-                            <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden">
-                                <div className="p-6 text-center border-b bg-white">
-                                    <div className="relative inline-block group mb-4">
-                                        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary-foreground p-1 shadow-lg shadow-primary/20">
-                                            <div className="w-full h-full rounded-[20px] bg-white flex items-center justify-center text-4xl font-black text-primary overflow-hidden">
+                        <aside className="lg:col-span-3 w-full max-w-full overflow-hidden">
+                            <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden bg-white">
+                                <div className="p-8 flex flex-col items-center text-center border-b">
+                                    <div className="relative group mb-4">
+                                        <div className="w-24 h-24 rounded-full sm:rounded-3xl bg-gradient-to-br from-primary to-primary-foreground p-1 shadow-lg shadow-primary/20">
+                                            <div className="w-full h-full rounded-full sm:rounded-[20px] bg-white flex items-center justify-center text-4xl font-black text-primary overflow-hidden">
                                                 {profile?.avatar_url ? (
                                                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                                 ) : (
@@ -245,48 +244,60 @@ const Profile = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-primary hover:scale-110 transition-transform">
+                                        <button className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-primary hover:scale-110 transition-transform border border-muted">
                                             <Camera className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    <h2 className="text-xl font-bold tracking-tight">{profile?.full_name || 'Utilisateur'}</h2>
-                                    <p className="text-sm text-muted-foreground mt-1 mb-4">{profile?.email}</p>
-                                    <Badge variant="secondary" className="rounded-full px-4 py-1 font-bold">
-                                        {profile?.role === 'vendor' ? '🏆 Vendeur Pro' : '🛍️ Client Privilège'}
-                                    </Badge>
+                                    <div className="space-y-1 w-full flex flex-col items-center">
+                                        <h2 className="text-xl font-bold tracking-tight truncate w-full max-w-[240px]">{profile?.full_name || 'Utilisateur'}</h2>
+                                        <p className="text-sm text-muted-foreground truncate w-full max-w-[240px] mb-4">{profile?.email}</p>
+                                        <Badge variant="secondary" className="rounded-full px-5 py-1.5 font-bold whitespace-nowrap bg-primary/10 text-primary border-none">
+                                            {profile?.role === 'vendor' ? '🏆 Vendeur Pro' : '🛍️ Client Privilège'}
+                                        </Badge>
+                                    </div>
                                 </div>
 
-                                <div className="p-3 space-y-1 bg-white">
+                                <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible p-2 sm:p-3 space-x-2 lg:space-x-0 lg:space-y-1 bg-white scrollbar-hide scroll-smooth w-full">
                                     {menuItems.map((item) => (
                                         <button
                                             key={item.id}
                                             onClick={() => setActiveTab(item.id)}
                                             className={cn(
-                                                "w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
+                                                "flex-none lg:w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group whitespace-nowrap lg:whitespace-normal",
                                                 activeTab === item.id
-                                                    ? "bg-primary/5 text-primary"
+                                                    ? "bg-primary text-white shadow-lg shadow-primary/20 lg:shadow-none"
                                                     : "text-muted-foreground hover:bg-muted/50"
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className={cn("p-2 rounded-lg transition-colors", activeTab === item.id ? "bg-primary text-white" : item.bg)}>
+                                                <div className={cn("p-2 rounded-lg transition-colors", activeTab === item.id ? "bg-white/20 text-white" : item.bg)}>
                                                     <item.icon className={cn("w-4 h-4", activeTab === item.id ? "text-white" : item.color)} />
                                                 </div>
                                                 <span className="font-bold text-sm">{item.label}</span>
                                             </div>
-                                            <ChevronRight className={cn("w-4 h-4 transition-transform", activeTab === item.id ? "translate-x-1" : "opacity-0 group-hover:opacity-100")} />
+                                            <ChevronRight className={cn("hidden lg:block w-4 h-4 transition-transform", activeTab === item.id ? "translate-x-1" : "opacity-0 group-hover:opacity-100")} />
                                         </button>
                                     ))}
 
-                                    <div className="pt-4 mt-4 border-t px-3 pb-2">
+                                    <div className="lg:hidden flex-none pr-2">
                                         <button
                                             onClick={handleLogout}
-                                            className="w-full flex items-center gap-3 p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-bold text-sm"
+                                            className="flex items-center gap-2 p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-bold text-sm whitespace-nowrap"
                                         >
                                             <LogOut className="w-4 h-4" />
-                                            Déconnexion
+                                            Sortir
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="hidden lg:block pt-4 mt-4 border-t px-6 pb-4">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-4 p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-bold text-sm"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        Déconnexion
+                                    </button>
                                 </div>
                             </Card>
 
@@ -438,25 +449,24 @@ const Profile = () => {
                             {/* Orders Tab */}
                             {activeTab === 'orders' && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="mb-6 flex items-center justify-between">
-                                        <div>
-                                            <h1 className="text-2xl font-black">Mes Commandes</h1>
-                                            <p className="text-muted-foreground font-medium">Historique complet de vos achats et suivis</p>
+                                    <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <h1 className="text-3xl font-black tracking-tight">Mes Commandes</h1>
+                                            <p className="text-muted-foreground font-medium">Suivez vos achats et gérez vos livraisons</p>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             {orders.some(o => o.status === 'pending') && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold gap-2 rounded-xl h-10 px-4"
+                                                <button
                                                     onClick={handleCancelAllOrders}
+                                                    className="group flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all border border-red-100"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                     Tout annuler
-                                                </Button>
+                                                </button>
                                             )}
-                                            <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border font-bold text-sm h-10 flex items-center">
-                                                Total: {orders.length}
+                                            <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-muted-foreground/10 font-black text-xs h-9 flex items-center gap-2">
+                                                <span className="text-muted-foreground uppercase tracking-widest text-[9px]">Total</span>
+                                                <span className="text-primary text-sm">{orders.length}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -475,50 +485,68 @@ const Profile = () => {
                                     ) : (
                                         <div className="space-y-4">
                                             {orders.map((order) => (
-                                                <Card key={order.id} className="border-none shadow-lg shadow-gray-200/30 rounded-2xl overflow-hidden bg-white hover:scale-[1.01] transition-all group">
-                                                    <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                                        <div className="flex items-start gap-6">
-                                                            <div className="h-16 px-4 rounded-2xl bg-muted flex flex-col items-center justify-center shrink-0 border border-muted-foreground/10 group-hover:bg-primary/5 transition-colors min-w-[100px]">
-                                                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter opacity-60">Référence</span>
-                                                                <span className="font-mono font-black text-primary text-sm">#{order.order_number || order.id.substring(0, 8)}</span>
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <div className="flex items-center gap-3 flex-wrap">
-                                                                    <span className="font-black text-lg">{formatPrice(order.total_amount || order.total)}</span>
-                                                                    {getStatusBadge(order.payment_status || order.status)}
+                                                <Card key={order.id} className="border-none shadow-sm hover:shadow-md transition-all rounded-3xl overflow-hidden bg-white border border-muted-foreground/5 mb-4 group">
+                                                    <div className="p-5 sm:p-6">
+                                                        {/* Ticket Header */}
+                                                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-dashed">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center">
+                                                                    <Package className="w-5 h-5 text-primary" />
                                                                 </div>
-                                                                <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
-                                                                    <Calendar className="w-4 h-4" />
-                                                                    Passée le {new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                                                </p>
-                                                                <p className="text-xs bg-muted/50 w-fit px-2 py-1 rounded text-muted-foreground italic">
-                                                                    ID: {order.id}
-                                                                </p>
+                                                                <div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground leading-none mb-1">Référence</p>
+                                                                    <p className="font-mono font-bold text-sm text-foreground">#{order.order_number || order.id.substring(0, 8)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="shrink-0">
+                                                                {getStatusBadge(order.payment_status || order.status)}
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                className="rounded-xl font-bold gap-2"
-                                                                size="sm"
-                                                                onClick={() => setSelectedOrderForDetails(order)}
-                                                            >
-                                                                Détails
-                                                            </Button>
-                                                            {order.status === 'pending' && (
+
+                                                        {/* Main Content */}
+                                                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                                                            <div className="space-y-4">
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground leading-none">Total payé</p>
+                                                                    <p className="text-3xl font-black text-primary tracking-tight">
+                                                                        {formatPrice(order.total_amount || order.total)}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-full text-xs font-semibold">
+                                                                        <Calendar className="w-3.5 h-3.5" />
+                                                                        {new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Actions */}
+                                                            <div className="flex items-center gap-2 pt-2 sm:pt-0">
                                                                 <Button
-                                                                    variant="ghost"
-                                                                    className="rounded-xl font-bold text-red-500 hover:text-red-600 hover:bg-red-50 gap-1"
-                                                                    size="sm"
-                                                                    onClick={() => handleCancelOrder(order.id)}
+                                                                    variant="outline"
+                                                                    className="flex-1 sm:flex-none h-11 rounded-xl font-bold border-muted-foreground/20 hover:bg-muted/50 transition-colors"
+                                                                    onClick={() => setSelectedOrderForDetails(order)}
                                                                 >
-                                                                    <X className="w-3.5 h-3.5" />
-                                                                    Annuler
+                                                                    Détails
                                                                 </Button>
-                                                            )}
-                                                            <Button className="rounded-xl font-bold gap-2" size="sm">
-                                                                Recommander
-                                                            </Button>
+
+                                                                {order.status === 'pending' && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        className="h-11 px-4 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                                                        onClick={() => handleCancelOrder(order.id)}
+                                                                    >
+                                                                        <X className="w-4 h-4 sm:mr-2" />
+                                                                        <span className="hidden sm:inline">Annuler</span>
+                                                                    </Button>
+                                                                )}
+
+                                                                <Button
+                                                                    className="flex-1 sm:flex-none h-11 rounded-xl font-black shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all"
+                                                                >
+                                                                    Recommander
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </Card>
