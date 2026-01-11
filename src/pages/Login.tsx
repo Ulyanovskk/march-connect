@@ -48,7 +48,7 @@ const Login = () => {
         console.log('[LOGIN] User role from database:', role);
 
         if (role === 'admin') {
-          navigate('/admin/payments');
+          navigate('/admin');
         } else if (role === 'vendor') {
           // Redirect to dashboard, ProtectedRoute will intercept if onboarding needed
           navigate('/vendor/dashboard');

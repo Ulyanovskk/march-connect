@@ -22,7 +22,6 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import LegalNotice from "./pages/LegalNotice";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
-import AdminPayments from "./pages/admin/Payments";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
 import AdminVendors from "./pages/admin/Vendors";
@@ -86,7 +85,6 @@ const App = () => (
 
             {/* Protected Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/payments" element={<ProtectedRoute requiredRole="admin"><AdminPayments /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/vendors" element={<ProtectedRoute requiredRole="admin"><AdminVendors /></ProtectedRoute>} />
             <Route path="/admin/shops" element={<ProtectedRoute requiredRole="admin"><AdminVendors /></ProtectedRoute>} />

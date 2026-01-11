@@ -36,12 +36,41 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { createClient } from '@supabase/supabase-js';
+
+// Create a secondary client for admin creation to avoid current session logout
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const creationClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    }
+});
 
 const AdminUsers = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState<'all' | 'active' | 'blocked'>('all');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [creatingAdmin, setCreatingAdmin] = useState(false);
+    const [newAdmin, setNewAdmin] = useState({
+        fullName: '',
+        email: '',
+        phone: '',
+        password: ''
+    });
 
     useEffect(() => {
         fetchUsers();
@@ -136,6 +165,52 @@ const AdminUsers = () => {
         }
     };
 
+    const handleCreateAdmin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newAdmin.email || !newAdmin.password || !newAdmin.fullName) {
+            toast.error("Veuillez remplir tous les champs obligatoires");
+            return;
+        }
+
+        try {
+            setCreatingAdmin(true);
+
+            // 1. Sign up the new admin using the ephemeral client
+            // This prevents the current admin from being logged out
+            const { data, error: signUpError } = await creationClient.auth.signUp({
+                email: newAdmin.email,
+                password: newAdmin.password,
+                options: {
+                    data: {
+                        full_name: newAdmin.fullName,
+                        phone: newAdmin.phone,
+                        role: 'admin'
+                    }
+                }
+            });
+
+            if (signUpError) throw signUpError;
+
+            if (data.user) {
+                // 2. Explicitly ensure role assignment 
+                const { error: roleError } = await supabase
+                    .from('user_roles')
+                    .upsert({ user_id: data.user.id, role: 'admin' });
+
+                if (roleError) console.warn("Role assignment sync info:", roleError);
+
+                toast.success("Compte Administrateur créé avec succès !");
+                setIsCreateModalOpen(false);
+                setNewAdmin({ fullName: '', email: '', phone: '', password: '' });
+                fetchUsers();
+            }
+        } catch (error: any) {
+            toast.error("Erreur lors de la création: " + error.message);
+        } finally {
+            setCreatingAdmin(false);
+        }
+    };
+
     const filteredUsers = users.filter(user => {
         const matchesSearch =
             user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -157,7 +232,12 @@ const AdminUsers = () => {
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" className="rounded-xl font-bold border-slate-200">Export CSV</Button>
-                        <Button className="rounded-xl font-bold shadow-lg shadow-primary/20">Ajouter Client</Button>
+                        <Button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="rounded-xl font-bold shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all gap-2"
+                        >
+                            <Shield className="w-4 h-4" /> Ajouter Admin
+                        </Button>
                     </div>
                 </div>
 
@@ -310,6 +390,87 @@ const AdminUsers = () => {
                         </TableBody>
                     </Table>
                 </div>
+
+                {/* Create Admin Modal */}
+                <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                    <DialogContent className="sm:max-w-[450px] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                        <DialogHeader className="p-8 bg-slate-900 text-white">
+                            <DialogTitle className="text-2xl font-black flex items-center gap-3">
+                                <Shield className="w-8 h-8 text-primary" />
+                                Nouvel Administrateur
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-400 font-medium">
+                                Créez un nouveau compte avec les accès complets au dashboard Yarid.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <form onSubmit={handleCreateAdmin} className="p-8 space-y-5 bg-white">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-wider text-slate-500">Nom Complet</Label>
+                                <Input
+                                    required
+                                    placeholder="ex: Paul Biya"
+                                    className="h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white font-bold transition-all"
+                                    value={newAdmin.fullName}
+                                    onChange={(e) => setNewAdmin({ ...newAdmin, fullName: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-wider text-slate-500">Email Professionnel</Label>
+                                <Input
+                                    required
+                                    type="email"
+                                    placeholder="admin@yarid.com"
+                                    className="h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white font-bold transition-all"
+                                    value={newAdmin.email}
+                                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-wider text-slate-500">Téléphone</Label>
+                                <Input
+                                    placeholder="+237 ..."
+                                    className="h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white font-bold transition-all"
+                                    value={newAdmin.phone}
+                                    onChange={(e) => setNewAdmin({ ...newAdmin, phone: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-wider text-slate-500">Mot de passe temporaire</Label>
+                                <Input
+                                    required
+                                    type="password"
+                                    placeholder="••••••••"
+                                    className="h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white font-bold transition-all"
+                                    value={newAdmin.password}
+                                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                                />
+                                <p className="text-[10px] text-slate-400 font-bold">L'administrateur pourra changer son mot de passe plus tard.</p>
+                            </div>
+
+                            <DialogFooter className="pt-4">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setIsCreateModalOpen(false)}
+                                    className="rounded-xl font-bold h-12 flex-1"
+                                >
+                                    Annuler
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={creatingAdmin}
+                                    className="rounded-xl font-bold h-12 flex-1 shadow-lg shadow-primary/20"
+                                >
+                                    {creatingAdmin ? "Création..." : "Créer le compte"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AdminLayout>
     );

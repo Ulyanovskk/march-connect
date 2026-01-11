@@ -13,19 +13,19 @@ const AuthCallback = () => {
                 console.log('Full URL:', window.location.href);
                 console.log('Hash:', window.location.hash);
                 console.log('Search:', window.location.search);
-                
+
                 // Check URL hash parameters first (Supabase puts params in hash)
                 const hash = window.location.hash.substring(1);
                 const hashParams = new URLSearchParams(hash);
-                
+
                 // Also check URL search parameters as backup
                 const searchParams = new URLSearchParams(window.location.search);
-                
+
                 const type = hashParams.get('type') || searchParams.get('type');
                 const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
 
-                console.log('Parsed params:', { 
-                    type, 
+                console.log('Parsed params:', {
+                    type,
                     accessToken,
                     hashParams: Object.fromEntries(hashParams.entries()),
                     searchParams: Object.fromEntries(searchParams.entries())
@@ -60,8 +60,8 @@ const AuthCallback = () => {
                         .eq('user_id', user.id);
 
                     // Determine the role to use
-                    const roleToUse = userRoles && userRoles.length > 0 
-                        ? userRoles[0].role 
+                    const roleToUse = userRoles && userRoles.length > 0
+                        ? userRoles[0].role
                         : (pendingRole || user.user_metadata?.role || 'client');
 
                     // If we have a pending role from OAuth, set it
@@ -102,7 +102,7 @@ const AuthCallback = () => {
                     if (!onboardingCompleted) {
                         navigate(roleToUse === 'vendor' ? '/onboarding/vendor' : '/onboarding/client');
                     } else {
-                        if (roleToUse === 'admin') navigate('/admin/payments');
+                        if (roleToUse === 'admin') navigate('/admin');
                         else if (roleToUse === 'vendor') navigate('/vendor/dashboard');
                         else navigate('/shop');
                     }
