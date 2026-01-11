@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import yaridLogo from '@/assets/yarid-logo.jpg';
+import yaridFooterLogo from '@/assets/yarid-footer-logo.png';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -25,9 +25,9 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img
-                src={yaridLogo}
+                src={yaridFooterLogo}
                 alt="YARID"
-                className="h-12 w-auto object-contain bg-white rounded-lg p-1"
+                className="h-10 w-auto object-contain"
               />
             </div>
             <p className="text-sm text-primary-foreground/80">
