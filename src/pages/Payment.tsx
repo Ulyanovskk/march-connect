@@ -181,7 +181,10 @@ const Payment = () => {
           status: 'pending',
           subtotal: total,
           total_amount: total,
-          notes: `Paiement par ${paymentMethod}`
+          notes: `Paiement par ${paymentMethod}`,
+          payment_method: paymentMethod,
+          payment_reference: transactionRef,
+          payment_status: 'pending' // Explicitly set payment status
         } as any)
         .select()
         .single();
