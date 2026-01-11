@@ -49,10 +49,18 @@ const AdminLogistics = () => {
     const fetchDeliveries = async () => {
         try {
             setLoading(true);
-            // For demo, we use orders with status processing, shipped, or delivered
+            // Fetch orders with full address details
             const { data, error } = await supabase
                 .from('orders')
-                .select('*')
+                .select(`
+                    *,
+                    addresses:shipping_address_id (
+                        address_line1,
+                        city,
+                        full_name,
+                        phone
+                    )
+                `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -91,9 +99,10 @@ const AdminLogistics = () => {
     };
 
     const filteredDeliveries = deliveries.filter(d =>
-        d.shipping_address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        d.addresses?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.addresses?.address_line1?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.addresses?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const logisticsStats = [
@@ -192,8 +201,8 @@ const AdminLogistics = () => {
                                             <TableCell colSpan={6}><div className="h-16 bg-slate-50/50 m-2 rounded-xl"></div></TableCell>
                                         </TableRow>
                                     ))
-                                ) : deliveries.length > 0 ? (
-                                    deliveries.map((delivery) => (
+                                ) : filteredDeliveries.length > 0 ? (
+                                    filteredDeliveries.map((delivery) => (
                                         <TableRow key={delivery.id} className="hover:bg-slate-50/50 transition-colors border-slate-50 group">
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
@@ -209,7 +218,11 @@ const AdminLogistics = () => {
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <MapPin className="w-3.5 h-3.5 text-red-400" />
-                                                    <span className="text-xs font-bold text-slate-600 truncate max-w-[150px]">{delivery.shipping_address || 'Douala, Cameroun'}</span>
+                                                    <span className="text-xs font-bold text-slate-600 truncate max-w-[150px]">
+                                                        {delivery.addresses ?
+                                                            `${delivery.addresses.city}, ${delivery.addresses.address_line1 || ''}`
+                                                            : 'Adresse non définie'}
+                                                    </span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -228,12 +241,12 @@ const AdminLogistics = () => {
                                             </TableCell>
                                             <TableCell>
                                                 <Badge className={`
-                              ${delivery.status === 'processing' ? 'bg-amber-50 text-amber-600' : ''}
-                              ${delivery.status === 'shipped' ? 'bg-indigo-50 text-indigo-600' : ''}
-                              ${delivery.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' : ''}
-                              ${delivery.status === 'cancelled' ? 'bg-red-50 text-red-600' : ''}
-                              border-none font-black text-[9px] px-2 py-0.5
-                           `}>
+                                                    ${delivery.status === 'processing' ? 'bg-amber-50 text-amber-600' : ''}
+                                                    ${delivery.status === 'shipped' ? 'bg-indigo-50 text-indigo-600' : ''}
+                                                    ${delivery.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' : ''}
+                                                    ${delivery.status === 'cancelled' ? 'bg-red-50 text-red-600' : ''}
+                                                    border-none font-black text-[9px] px-2 py-0.5
+                                                `}>
                                                     {delivery.status.toUpperCase()}
                                                 </Badge>
                                             </TableCell>
