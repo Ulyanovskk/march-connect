@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
     User, Store, Mail, ShieldCheck, Save, Loader2, Calendar,
     LogOut, Settings, Bell, CreditCard, ShoppingBag,
-    ChevronRight, MapPin, Camera, Star
+    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
@@ -149,6 +149,59 @@ const Profile = () => {
             toast.error('Erreur lors de la mise à jour');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleCancelOrder = async (orderId: string) => {
+        const confirmed = window.confirm(
+            "⚠️ ATTENTION : L'annulation d'une commande peut entraîner des pénalités sur votre compte utilisateur (frais de dossier ou limitation des options de paiement futures).\n\nSouhaitez-vous vraiment annuler cette commande ?"
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const { error } = await supabase
+                .from('orders')
+                .delete()
+                .eq('id', orderId);
+
+            if (error) throw error;
+
+            toast.success("Commande supprimée avec succès");
+            fetchProfileAndOrders();
+        } catch (error: any) {
+            console.error('Delete error:', error);
+            toast.error("Erreur lors de la suppression de la commande");
+        }
+    };
+
+    const handleCancelAllOrders = async () => {
+        const pendingOrders = orders.filter(o => o.status === 'pending');
+        if (pendingOrders.length === 0) {
+            toast.info("Aucune commande en attente à annuler.");
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `⚠️ ATTENTION : Vous allez annuler ${pendingOrders.length} commandes en attente.\n\nL'annulation massive de commandes peut entraîner des pénalités sévères sur votre compte utilisateur (frais de dossier ou suspension temporaire).\n\nSouhaitez-vous vraiment tout annuler ?`
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const { error } = await supabase
+                .from('orders')
+                .delete()
+                .eq('user_id', profile.id)
+                .eq('status', 'pending');
+
+            if (error) throw error;
+
+            toast.success("Toutes les commandes en attente ont été supprimées");
+            fetchProfileAndOrders();
+        } catch (error: any) {
+            console.error('Delete all error:', error);
+            toast.error("Erreur lors de la suppression massive");
         }
     };
 
@@ -401,8 +454,21 @@ const Profile = () => {
                                             <h1 className="text-2xl font-black">Mes Commandes</h1>
                                             <p className="text-muted-foreground font-medium">Historique complet de vos achats et suivis</p>
                                         </div>
-                                        <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border font-bold text-sm">
-                                            Total: {orders.length}
+                                        <div className="flex items-center gap-3">
+                                            {orders.some(o => o.status === 'pending') && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold gap-2 rounded-xl h-10 px-4"
+                                                    onClick={handleCancelAllOrders}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                    Tout annuler
+                                                </Button>
+                                            )}
+                                            <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border font-bold text-sm h-10 flex items-center">
+                                                Total: {orders.length}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -423,9 +489,9 @@ const Profile = () => {
                                                 <Card key={order.id} className="border-none shadow-lg shadow-gray-200/30 rounded-2xl overflow-hidden bg-white hover:scale-[1.01] transition-all group">
                                                     <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                                                         <div className="flex items-start gap-6">
-                                                            <div className="w-16 h-16 rounded-2xl bg-muted flex flex-col items-center justify-center shrink-0 border border-muted-foreground/10 group-hover:bg-primary/5 transition-colors">
-                                                                <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">ORD</span>
-                                                                <span className="font-mono font-black text-primary">#{order.order_number || order.id.substring(0, 4)}</span>
+                                                            <div className="h-16 px-4 rounded-2xl bg-muted flex flex-col items-center justify-center shrink-0 border border-muted-foreground/10 group-hover:bg-primary/5 transition-colors min-w-[100px]">
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter opacity-60">Référence</span>
+                                                                <span className="font-mono font-black text-primary text-sm">#{order.order_number || order.id.substring(0, 8)}</span>
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <div className="flex items-center gap-3 flex-wrap">
@@ -445,6 +511,17 @@ const Profile = () => {
                                                             <Button variant="outline" className="rounded-xl font-bold" size="sm">
                                                                 Détails
                                                             </Button>
+                                                            {order.status === 'pending' && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    className="rounded-xl font-bold text-red-500 hover:text-red-600 hover:bg-red-50 gap-1"
+                                                                    size="sm"
+                                                                    onClick={() => handleCancelOrder(order.id)}
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                    Annuler
+                                                                </Button>
+                                                            )}
                                                             <Button className="rounded-xl font-bold gap-2" size="sm">
                                                                 Recommander
                                                             </Button>
