@@ -190,7 +190,7 @@ const Payment = () => {
 
       // 3. Créer les détails des articles (order_items)
       const orderItems = [];
-      
+
       for (const item of items) {
         // Récupérer le vendor_id du produit
         const { data: productData, error: productError } = await (supabase as any)
@@ -198,19 +198,19 @@ const Payment = () => {
           .select('vendor_id')
           .eq('id', item.id)
           .single();
-        
+
         if (productError) {
           console.error(`❌ Erreur récupération vendor_id pour produit ${item.id}:`, productError);
           toast.error(`Erreur avec le produit ${item.name}: ${productError.message}`);
           throw new Error(`Impossible de récupérer les informations du produit ${item.name}`);
         }
-        
+
         if (!productData?.vendor_id) {
           console.error(`❌ Produit ${item.id} n'a pas de vendor_id`);
           toast.error(`Le produit ${item.name} n'est pas associé à un vendeur`);
           throw new Error(`Produit ${item.name} invalide: vendor_id manquant`);
         }
-        
+
         orderItems.push({
           order_id: order.id,
           product_id: item.id,
@@ -233,7 +233,7 @@ const Payment = () => {
         toast.error(`Erreur création des articles: ${itemsError.message}`);
         throw new Error(`Impossible de créer les articles de la commande: ${itemsError.message}`);
       }
-      
+
       console.log('✅ Order_items créés avec succès:', insertedItems);
 
       toast.success('Commande créée ! Votre paiement sera vérifié sous 24h.');
@@ -505,6 +505,16 @@ const Payment = () => {
                         </Label>
                       </div>
                     </RadioGroup>
+
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                      <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-bold text-primary mb-1">Paiement 100% sécurisé (Escrow)</p>
+                        <p className="text-muted-foreground leading-relaxed">
+                          « Pour votre sécurité, tous les paiements sont effectués directement sur les comptes sécurisés de <span className="font-bold text-foreground">YARID</span>. Les vendeurs ne reçoivent les fonds qu'après la livraison du produit et la validation de sa conformité. »
+                        </p>
+                      </div>
+                    </div>
 
                     <Separator />
 

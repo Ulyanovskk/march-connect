@@ -4,7 +4,7 @@ import {
   Package, Plus, Edit, Trash2, Eye, TrendingUp, ShoppingCart,
   DollarSign, Users, BarChart3, Settings, LogOut, Store,
   CheckCircle, XCircle, Clock, Image as ImageIcon, Upload, Loader2,
-  PieChart as PieChartIcon, TrendingDown, Calendar
+  PieChart as PieChartIcon, TrendingDown, Calendar, ShieldCheck
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -410,10 +410,10 @@ const VendorDashboard = () => {
 
     try {
       setIsSubmitting(true);
-      
+
       // Get category name from static categories
       const categoryName = staticCategories.find(c => c.slug === newProduct.category)?.name || null;
-      
+
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -472,10 +472,10 @@ const VendorDashboard = () => {
 
     try {
       setIsSubmitting(true);
-      
+
       // Get category name from static categories
       const categoryName = staticCategories.find(c => c.slug === editProduct.category)?.name || null;
-      
+
       const { error } = await supabase
         .from('products')
         .update({
@@ -542,7 +542,7 @@ const VendorDashboard = () => {
 
   // Real stats calculation with actual view tracking
   const [realViews, setRealViews] = useState<number>(0);
-  
+
   const stats = {
     totalRevenue: orders.reduce((acc, order) => acc + (Number(order.total || 0)), 0),
     totalOrders: orders.length,
@@ -566,7 +566,7 @@ const VendorDashboard = () => {
         }
       }
     };
-    
+
     loadViewStats();
   }, [vendorId, products]);
 
@@ -631,6 +631,36 @@ const VendorDashboard = () => {
             </Badge>
           </div>
         </div>
+
+        {/* Escrow Information Banner */}
+        <Card className="mb-8 border-none bg-gradient-to-r from-primary/5 to-primary/10 shadow-sm overflow-hidden relative">
+          <div className="absolute right-0 top-0 h-full w-32 bg-primary/5 -skew-x-12 translate-x-12" />
+          <CardContent className="p-6 relative z-10">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+              <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-8 h-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-foreground">Système de paiement centralisé (Escrow)</h2>
+                <div className="text-sm text-muted-foreground leading-relaxed max-w-4xl">
+                  <p>Tous les paiements des clients sont temporairement sécurisés sur les comptes <span className="font-bold text-primary">YARID</span>.
+                    Les fonds sont automatiquement débloqués et transférés vers votre compte après :</p>
+                  <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-1 mt-2 font-medium text-foreground/80">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      La confirmation de livraison
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      La validation de la qualité du produit par le client
+                    </li>
+                  </ul>
+                  <p className="mt-2 text-xs italic opacity-80">Ce mécanisme garantit la sécurité des transactions et renforce la confiance des acheteurs envers votre boutique.</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
