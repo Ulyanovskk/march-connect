@@ -260,7 +260,9 @@ const AdminFinance = () => {
                                         return (
                                             <TableRow key={tr.id} className="hover:bg-slate-50/50 transition-colors border-slate-50">
                                                 <TableCell>
-                                                    <p className="text-xs font-black text-slate-800">#{tr.id.substring(0, 8).toUpperCase()}</p>
+                                                    <p className="text-xs font-black text-slate-800">
+                                                        #{tr.order_number || tr.id.substring(0, 8).toUpperCase()}
+                                                    </p>
                                                     <p className="text-[10px] font-bold text-slate-400">{format(new Date(tr.created_at), 'dd MMM yyyy', { locale: fr })}</p>
                                                 </TableCell>
                                                 <TableCell>
