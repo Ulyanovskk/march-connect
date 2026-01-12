@@ -741,7 +741,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public;
+$$ LANGUAGE plpgsql SET search_path = public, pg_catalog;
 
 -- Triggers pour updated_at
 CREATE TRIGGER update_profiles_updated_at 
@@ -785,7 +785,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_catalog
 AS $$
 DECLARE
   user_role TEXT;
@@ -803,7 +803,7 @@ BEGIN
   
   -- Créer l'entrée user_role avec le bon rôle
   INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, user_role::app_role);
+  VALUES (NEW.id, user_role::public.app_role);
   
   RETURN NEW;
 END;
@@ -817,7 +817,11 @@ CREATE TRIGGER on_auth_user_created
 
 -- Fonction pour générer le numéro de commande
 CREATE OR REPLACE FUNCTION public.generate_order_number()
-RETURNS TEXT AS $$
+RETURNS TEXT 
+LANGUAGE plpgsql 
+SECURITY DEFINER 
+SET search_path = public, pg_catalog
+AS $$
 DECLARE
   new_number TEXT;
   year_part TEXT;
@@ -834,11 +838,15 @@ BEGIN
   new_number := 'YAR-' || year_part || '-' || LPAD(seq_number::TEXT, 6, '0');
   RETURN new_number;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Fonction pour mettre à jour les statistiques de produit
 CREATE OR REPLACE FUNCTION public.update_product_stats()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql 
+SECURITY DEFINER 
+SET search_path = public, pg_catalog
+AS $$
 BEGIN
   -- Mettre à jour la moyenne des avis
   UPDATE public.products
@@ -857,7 +865,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger pour mettre à jour les stats après un avis
 CREATE TRIGGER update_product_stats_trigger
@@ -866,7 +874,11 @@ CREATE TRIGGER update_product_stats_trigger
 
 -- Fonction pour mettre à jour les statistiques de vendeur
 CREATE OR REPLACE FUNCTION public.update_vendor_stats()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql 
+SECURITY DEFINER 
+SET search_path = public, pg_catalog
+AS $$
 BEGIN
   -- Mettre à jour la moyenne des avis du vendeur
   UPDATE public.vendors
@@ -885,23 +897,41 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger pour mettre à jour les stats du vendeur après un avis
 CREATE TRIGGER update_vendor_stats_trigger
   AFTER INSERT OR UPDATE OR DELETE ON public.vendor_reviews
   FOR EACH ROW EXECUTE FUNCTION public.update_vendor_stats();
 
+-- Fonction pour incrémenter les vues de produit
+CREATE OR REPLACE FUNCTION public.increment_product_views(product_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_catalog
+AS $$
+BEGIN
+  UPDATE public.products
+  SET views = COALESCE(views, 0) + 1
+  WHERE id = product_id;
+END;
+$$;
+
 -- Fonction pour incrémenter les vues de FAQ
 CREATE OR REPLACE FUNCTION public.increment_faq_views()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql 
+SECURITY DEFINER 
+SET search_path = public, pg_catalog
+AS $$
 BEGIN
   UPDATE public.faq_items
-  SET views = views + 1
+  SET views = COALESCE(views, 0) + 1
   WHERE id = NEW.id;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Note: Ce trigger peut être ajouté côté application plutôt que base de données
 -- pour éviter les problèmes de performance. À utiliser avec précaution.
