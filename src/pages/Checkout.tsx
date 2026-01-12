@@ -98,8 +98,8 @@ const Checkout = () => {
               <div className="bg-card rounded-2xl p-6 shadow-soft space-y-4">
                 <h2 className="font-semibold">Informations de contact & livraison</h2>
                 <p className="text-sm text-muted-foreground">
-                  Pour l’instant, la finalisation se fait avec notre équipe via WhatsApp. 
-                  Indiquez clairement dans le message votre <span className="font-semibold">nom complet</span>, 
+                  Pour l’instant, la finalisation se fait avec notre équipe via WhatsApp.
+                  Indiquez clairement dans le message votre <span className="font-semibold">nom complet</span>,
                   votre <span className="font-semibold">ville</span> et votre <span className="font-semibold">numéro de téléphone</span>.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
@@ -165,7 +165,7 @@ const Checkout = () => {
                   <Button
                     asChild
                     size="lg"
-                    className="w-full h-14 text-base font-semibold gap-2"
+                    className="w-full h-14 text-sm font-semibold gap-2"
                   >
                     <Link to="/cart">
                       Modifier mon panier
@@ -175,9 +175,9 @@ const Checkout = () => {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="w-full h-14 text-base font-semibold gap-2 border-yarid-green text-yarid-green hover:bg-yarid-green/5"
+                    className="w-full h-14 text-sm font-semibold gap-2 border-yarid-green text-yarid-green hover:bg-yarid-green/5"
                     onClick={() => {
-                      const orderDetails = items.map(item => 
+                      const orderDetails = items.map(item =>
                         `- ${item.name} x${item.quantity}: ${formatPrice(item.price * item.quantity)}`
                       ).join('\\n');
                       const message = encodeURIComponent(
@@ -201,7 +201,7 @@ Téléphone: [À renseigner]`
                   <Button
                     asChild
                     size="lg"
-                    className="w-full h-14 text-base font-semibold gap-2"
+                    className="w-full h-14 text-sm font-semibold gap-2"
                   >
                     <Link to="/payment">
                       <CreditCard className="w-5 h-5" />
