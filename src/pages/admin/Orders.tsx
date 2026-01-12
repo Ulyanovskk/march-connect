@@ -507,7 +507,7 @@ const AdminOrders = () => {
                                                 onClick={() => handleUpdatePaymentStatus(selectedOrder.id, 'completed')}
                                                 disabled={selectedOrder.payment_status === 'completed' || selectedOrder.payment_status === 'paid'}
                                             >
-                                                Accepter ✅
+                                                Accepter
                                             </Button>
                                             <Button
                                                 size="sm"
@@ -515,7 +515,7 @@ const AdminOrders = () => {
                                                 onClick={() => handleUpdatePaymentStatus(selectedOrder.id, 'pending')}
                                                 disabled={selectedOrder.payment_status === 'pending'}
                                             >
-                                                Attente ⏳
+                                                Attente
                                             </Button>
                                             <Button
                                                 size="sm"
@@ -523,7 +523,7 @@ const AdminOrders = () => {
                                                 onClick={() => handleUpdatePaymentStatus(selectedOrder.id, 'failed')}
                                                 disabled={selectedOrder.payment_status === 'failed'}
                                             >
-                                                Refuser ❌
+                                                Refuser
                                             </Button>
                                         </div>
                                         <p className="text-xs text-slate-500 leading-tight">
