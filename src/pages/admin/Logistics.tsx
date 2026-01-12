@@ -87,19 +87,20 @@ const AdminLogistics = () => {
         }
     };
 
-    const handleTrackGPS = (id: string) => {
-        toast.info(`Initialisation du suivi GPS pour TRK-${id.substring(0, 8).toUpperCase()}`);
+    const handleTrackGPS = (id: string, orderNumber: string | null) => {
+        toast.info(`Initialisation du suivi GPS pour ${orderNumber || 'TRK-' + id.substring(0, 8).toUpperCase()}`);
     };
 
-    const handleReportIncident = (id: string) => {
+    const handleReportIncident = (id: string, orderNumber: string | null) => {
         const reason = prompt("Décrivez brièvement l'incident de livraison :");
         if (reason) {
-            toast.error(`Incident signalé pour #${id.substring(0, 8)} : ${reason}`);
+            toast.error(`Incident signalé pour ${orderNumber || '#' + id.substring(0, 8)} : ${reason}`);
         }
     };
 
     const filteredDeliveries = deliveries.filter(d =>
         d.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.order_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.addresses?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.addresses?.address_line1?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (d.addresses?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -210,7 +211,9 @@ const AdminLogistics = () => {
                                                         <Truck className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">TRK-{delivery.id.substring(0, 8).toUpperCase()}</p>
+                                                        <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">
+                                                            {delivery.order_number || `TRK-${delivery.id.substring(0, 8).toUpperCase()}`}
+                                                        </p>
                                                         <p className="text-[10px] font-bold text-slate-400">Poids: 1.2kg | Standard</p>
                                                     </div>
                                                 </div>
@@ -259,13 +262,13 @@ const AdminLogistics = () => {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-100 p-1">
                                                         <DropdownMenuItem
-                                                            onClick={() => handleTrackGPS(delivery.id)}
+                                                            onClick={() => handleTrackGPS(delivery.id, delivery.order_number)}
                                                             className="rounded-lg gap-2 font-bold text-slate-600"
                                                         >
                                                             <Navigation className="w-4 h-4" /> Suivi GPS
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
-                                                            onClick={() => toast.info(`Détails commande #${delivery.id.substring(0, 8)}`)}
+                                                            onClick={() => toast.info(`Détails commande ${delivery.order_number || '#' + delivery.id.substring(0, 8)}`)}
                                                             className="rounded-lg gap-2 font-bold text-slate-600"
                                                         >
                                                             <ExternalLink className="w-4 h-4" /> Détails Commande
@@ -278,7 +281,7 @@ const AdminLogistics = () => {
                                                             <CheckCircle2 className="w-4 h-4" /> Valider Livraison
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
-                                                            onClick={() => handleReportIncident(delivery.id)}
+                                                            onClick={() => handleReportIncident(delivery.id, delivery.order_number)}
                                                             className="rounded-lg gap-2 font-bold text-red-600"
                                                         >
                                                             <AlertCircle className="w-4 h-4" /> Signaler Problème
