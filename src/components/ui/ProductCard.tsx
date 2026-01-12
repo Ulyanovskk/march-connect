@@ -133,34 +133,34 @@ const ProductCard = ({
       </Link>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {/* Vendor info */}
         {vendorName && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-            <span className="truncate">{vendorName}</span>
-            {isVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
+          <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mb-1.5">
+            <span className="truncate max-w-[60px] sm:max-w-none">{vendorName}</span>
+            {isVerified && <BadgeCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />}
             {vendorCity && (
-              <>
-                <span>•</span>
-                <MapPin className="h-3 w-3 shrink-0" />
+              <div className="flex items-center gap-0.5 shrink-0 ml-auto sm:ml-0">
+                <span className="hidden sm:inline">•</span>
+                <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 <span>{vendorCity}</span>
-              </>
+              </div>
             )}
           </div>
         )}
 
         {/* Product name */}
         <Link to={`/product/${id}`}>
-          <h3 className="font-medium text-foreground line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+          <h3 className="font-medium text-foreground text-sm sm:text-base line-clamp-2 mb-1 group-hover:text-primary transition-colors min-h-[2.5rem] sm:min-h-0">
             {name}
           </h3>
         </Link>
 
         {/* Price */}
-        <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-lg font-bold text-primary">{formatPrice(price)}</span>
+        <div className="flex flex-wrap items-baseline gap-1 sm:gap-2 mb-3">
+          <span className="text-sm sm:text-lg font-bold text-primary">{formatPrice(price)}</span>
           {originalPrice && originalPrice > price && (
-            <span className="text-sm text-muted-foreground line-through">
+            <span className="text-[10px] sm:text-sm text-muted-foreground line-through">
               {formatPrice(originalPrice)}
             </span>
           )}
@@ -168,13 +168,22 @@ const ProductCard = ({
 
         {/* Add to cart button */}
         <Button
-          className="w-full gap-2"
+          className="w-full gap-1 sm:gap-2 px-1 sm:px-4 h-9 sm:h-10 text-[10px] sm:text-sm font-bold"
           size="sm"
           disabled={isOutOfStock}
           onClick={handleAddToCart}
         >
-          <ShoppingCart className="h-4 w-4" />
-          {isOutOfStock ? 'Indisponible' : 'Ajouter au panier'}
+          <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+          <span className="truncate">
+            {isOutOfStock ? (
+              'Rupture'
+            ) : (
+              <>
+                <span className="hidden sm:inline">Ajouter au panier</span>
+                <span className="sm:hidden">Ajouter</span>
+              </>
+            )}
+          </span>
         </Button>
       </div>
     </div>
