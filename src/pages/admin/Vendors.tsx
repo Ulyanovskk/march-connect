@@ -4,18 +4,16 @@ import {
     Search,
     Filter,
     MoreVertical,
+    UserCheck,
+    UserX,
+    Mail,
+    Phone,
+    ShieldCheck,
     Store,
-    CheckCircle,
-    XCircle,
-    ExternalLink,
-    MapPin,
-    Calendar,
-    Package,
-    Wallet,
-    BadgeCheck,
-    AlertTriangle,
+    AlertCircle,
     Eye,
-    Ban
+    ChevronRight,
+    SearchX
 } from 'lucide-react';
 import {
     Table,
@@ -47,17 +45,13 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from '@/lib/demo-data'; // Fixed: Correct path is demo-data
-import { useNavigate } from 'react-router-dom';
 
 const AdminVendors = () => {
     const [vendors, setVendors] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const navigate = useNavigate();
     const [selectedVendor, setSelectedVendor] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-    const [vendorStats, setVendorStats] = useState({ products: 0, orders: 0, revenue: 0 });
 
     useEffect(() => {
         fetchVendors();
@@ -67,22 +61,63 @@ const AdminVendors = () => {
         try {
             setLoading(true);
 
-            const { data: vendorsData, error: vendorsError } = await supabase
+            // 1. Get user IDs from roles
+            const { data: roleAssignments } = await supabase
+                .from('user_roles')
+                .select('user_id')
+                .eq('role', 'vendor');
+
+            // 2. Get user IDs from vendors table (shops)
+            const { data: shopAssignments } = await supabase
                 .from('vendors')
-                .select('*');
+                .select('user_id');
 
-            if (vendorsError) throw vendorsError;
+            const roleIds = roleAssignments?.map(r => r.user_id) || [];
+            const shopIds = shopAssignments?.map(s => s.user_id) || [];
 
-            const { data: profilesData, error: profilesError } = await supabase
+            // Unify IDs (all users who are either marked as vendor OR have a shop)
+            const combinedIds = Array.from(new Set([...roleIds, ...shopIds]));
+
+            if (combinedIds.length === 0) {
+                setVendors([]);
+                return;
+            }
+
+            // 3. Get profiles for these users
+            const { data: profiles, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, full_name, avatar_url, email, phone');
+                .select('*')
+                .in('id', combinedIds);
 
-            if (profilesError) console.warn("Error fetching profiles for vendors:", profilesError);
+            if (profileError) throw profileError;
 
-            const mergedVendors = vendorsData?.map(vendor => ({
-                ...vendor,
-                profiles: profilesData?.find(p => p.id === vendor.user_id) || null
-            })) || [];
+            // 4. Get shops for these users
+            const { data: shops } = await supabase
+                .from('vendors')
+                .select('id, user_id, shop_name, is_verified, is_active, email, phone, created_at');
+
+            // Merge data based on combinedIds to not miss anyone
+            const mergedVendors = combinedIds.map(userId => {
+                const profile = profiles?.find(p => p.id === userId);
+                const userShops = shops?.filter(s => s.user_id === userId) || [];
+
+                // Prioritize shop info if profile info is missing/empty
+                const email = profile?.email || userShops[0]?.email;
+                const phone = profile?.phone || userShops[0]?.phone;
+                const name = profile?.full_name || userShops[0]?.shop_name || 'Utilisateur sans nom';
+
+                return {
+                    id: userId,
+                    full_name: name,
+                    email: email,
+                    phone: phone,
+                    avatar_url: profile?.avatar_url,
+                    created_at: profile?.created_at || (userShops[0] as any)?.created_at,
+                    shops_count: userShops.length,
+                    shops: userShops,
+                    is_verified: userShops.some(s => s.is_verified)
+                };
+            });
 
             setVendors(mergedVendors);
         } catch (error: any) {
@@ -92,184 +127,34 @@ const AdminVendors = () => {
         }
     };
 
-    const fetchVendorStats = async (vendorId: string) => {
-        try {
-            // Count products
-            const { count: productsCount } = await supabase
-                .from('products')
-                .select('*', { count: 'exact', head: true })
-                .eq('vendor_id', vendorId);
-
-            // Fetch vendor commission rate
-            const { data: vendorData } = await supabase
-                .from('vendors')
-                .select('commission_rate')
-                .eq('id', vendorId)
-                .single();
-
-            const commissionRate = (vendorData?.commission_rate || 10) / 100;
-
-            // Fetch order items for this vendor
-            const { data: items, error: itemsError } = await supabase
-                .from('order_items')
-                .select('order_id, total_price, orders!inner(payment_status, status)')
-                .eq('vendor_id', vendorId);
-
-            if (itemsError) throw itemsError;
-
-            // Calculate Net Revenue (Escrow Released & Delivered)
-            // Logic: Only delivered orders => Funds released from escrow
-            // Amount: Total Price - Commission (Net to Vendor)
-            const deliveredItems = items?.filter(item =>
-                (item.orders as any)?.status === 'delivered' &&
-                ((item.orders as any)?.payment_status === 'paid' || (item.orders as any)?.payment_status === 'completed')
-            ) || [];
-
-            // Sum Net (Total * (1 - Rate))
-            const revenue = deliveredItems.reduce((sum, item) => {
-                const itemTotal = Number(item.total_price) || 0;
-                const netAmount = itemTotal * (1 - commissionRate);
-                return sum + netAmount;
-            }, 0);
-
-            // Count unique orders (All Valid Orders, not just delivered, for generic stat)
-            const allValidItems = items?.filter(item =>
-                (item.orders as any)?.payment_status === 'paid' ||
-                (item.orders as any)?.payment_status === 'completed'
-            ) || [];
-            const uniqueOrderIds = new Set(allValidItems.map(i => i.order_id));
-            const ordersCount = uniqueOrderIds.size;
-
-            setVendorStats({
-                products: productsCount || 0,
-                orders: ordersCount || 0,
-                revenue: revenue
-            });
-        } catch (error) {
-            console.error("Error fetching vendor stats:", error);
-        }
-    };
-
-    const handleViewVendor = (vendor: any) => {
-        setSelectedVendor(vendor);
-        setVendorStats({ products: 0, orders: 0, revenue: 0 }); // Reset stats
-        setIsDetailsOpen(true);
-        fetchVendorStats(vendor.id);
-    };
-
-    const handleVerifyVendor = async (id: string, isVerified: boolean) => {
-        try {
-            const { error } = await supabase
-                .from('vendors')
-                .update({ is_verified: isVerified })
-                .eq('id', id);
-
-            if (error) throw error;
-
-            toast.success(isVerified ? "Vendeur vérifié avec succès" : "Vérification retirée");
-
-            // Update local state if selected
-            if (selectedVendor?.id === id) {
-                setSelectedVendor({ ...selectedVendor, is_verified: isVerified });
-            }
-
-            fetchVendors();
-        } catch (error: any) {
-            toast.error("Erreur lors de la mise à jour: " + error.message);
-        }
-    };
-
-    const handleBanShop = async (id: string, shopName: string) => {
-        if (!confirm(`Voulez-vous vraiment bannir la boutique "${shopName}" ? Cette action désactivera tous les produits associés.`)) {
-            return;
-        }
-
-        try {
-            // First, de-verify the vendor
-            const { error: vendorError } = await supabase
-                .from('vendors')
-                .update({ is_verified: false })
-                .eq('id', id);
-
-            if (vendorError) throw vendorError;
-
-            // Then, deactivate all products
-            const { error: productsError } = await supabase
-                .from('products')
-                .update({ is_active: false })
-                .eq('vendor_id', id);
-
-            if (productsError) throw productsError;
-
-            toast.success(`La boutique "${shopName}" a été bannie et ses produits désactivés.`);
-
-            if (selectedVendor?.id === id) {
-                setSelectedVendor({ ...selectedVendor, is_verified: false });
-            }
-
-            fetchVendors();
-        } catch (error: any) {
-            toast.error("Erreur lors de l'opération de bannissement");
-        }
+    const handleAction = (vendorId: string, action: string) => {
+        toast.info(`Action "${action}" bientôt disponible pour le vendeur ${vendorId.substring(0, 5)}`);
     };
 
     const filteredVendors = vendors.filter(v =>
-        v.shop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        v.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.phone?.includes(searchTerm) ||
+        v.shops?.some((s: any) => s.shop_name?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
         <AdminLayout>
             <div className="space-y-6">
-                {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Gestion des Vendeurs</h1>
-                        <p className="text-slate-500 font-medium text-sm">Contrôlez les accès boutiques et la certification des vendeurs</p>
+                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Gérants & Vendeurs</h1>
+                        <p className="text-slate-500 font-medium text-sm">Gérez les comptes des commerçants et leur identité</p>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" className="rounded-xl font-bold border-slate-200">Rapport Performance</Button>
-                    </div>
+                    <Button variant="outline" className="rounded-xl font-bold border-slate-200" onClick={fetchVendors}>Actualiser</Button>
                 </div>
 
-                {/* Stats Summary Panel */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center text-white">
-                            <Store className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Vendeurs</p>
-                            <h3 className="text-xl font-black text-slate-800">{vendors.length}</h3>
-                        </div>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft flex items-center gap-4">
-                        <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
-                            <BadgeCheck className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Vérifiés</p>
-                            <h3 className="text-xl font-black text-slate-800">{vendors.filter(v => v.is_verified).length}</h3>
-                        </div>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft flex items-center gap-4">
-                        <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white">
-                            <AlertTriangle className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">En attente</p>
-                            <h3 className="text-xl font-black text-slate-800">{vendors.filter(v => !v.is_verified).length}</h3>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Search & Filter */}
+                {/* Search */}
                 <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft flex gap-4 items-center">
                     <div className="relative flex-1 group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                         <Input
-                            placeholder="Rechercher boutique, ville..."
+                            placeholder="Rechercher par nom, email, téléphone..."
                             className="pl-11 h-12 rounded-xl border-none bg-slate-50 focus:bg-white transition-all outline-none ring-0 focus:ring-2 focus:ring-primary/20"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -277,92 +162,108 @@ const AdminVendors = () => {
                     </div>
                 </div>
 
-                {/* Vendors Table */}
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="font-bold text-slate-800">Boutique</TableHead>
-                                <TableHead className="font-bold text-slate-800">Vendeur</TableHead>
-                                <TableHead className="font-bold text-slate-800">Localisation</TableHead>
-                                <TableHead className="font-bold text-slate-800">Date Inscription</TableHead>
-                                <TableHead className="font-bold text-slate-800">Statut</TableHead>
-                                <TableHead className="text-right font-bold text-slate-800">Actions</TableHead>
+                                <TableHead className="font-bold">Manager</TableHead>
+                                <TableHead className="font-bold">Contact</TableHead>
+                                <TableHead className="font-bold text-center">Boutiques</TableHead>
+                                <TableHead className="font-bold">Inscription</TableHead>
+                                <TableHead className="font-bold">Identité</TableHead>
+                                <TableHead className="text-right font-bold">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                Array.from({ length: 3 }).map((_, i) => (
+                                Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i} className="animate-pulse">
-                                        <TableCell colSpan={6}><div className="h-16 bg-slate-50/50 rounded-xl"></div></TableCell>
+                                        <TableCell colSpan={6}><div className="h-16 bg-slate-50 rounded-xl"></div></TableCell>
                                     </TableRow>
                                 ))
                             ) : filteredVendors.length > 0 ? (
                                 filteredVendors.map((vendor) => (
-                                    <TableRow
-                                        key={vendor.id}
-                                        className="hover:bg-slate-50/50 transition-colors border-slate-50 group cursor-pointer"
-                                        onClick={() => handleViewVendor(vendor)}
-                                    >
+                                    <TableRow key={vendor.id} className="group hover:bg-slate-50/50 transition-colors border-slate-50">
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden">
-                                                    {vendor.logo_url ? (
-                                                        <img src={vendor.logo_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <Store className="w-5 h-5 text-slate-400" />
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-800 leading-none mb-1 flex items-center gap-2">
-                                                        {vendor.shop_name}
-                                                        {vendor.is_verified && <BadgeCheck className="w-4 h-4 text-primary fill-primary/10" />}
-                                                    </p>
-                                                    <p className="text-[11px] text-slate-400 font-medium">Boutique ID: {vendor.id.substring(0, 8)}</p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="w-6 h-6 border border-slate-100">
-                                                    <AvatarFallback className="bg-slate-50 text-[10px] font-black">{vendor.profiles?.full_name?.substring(0, 2) || 'VN'}</AvatarFallback>
+                                                <Avatar className="w-10 h-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
+                                                    <AvatarImage src={vendor.avatar_url} />
+                                                    <AvatarFallback className="bg-indigo-50 text-indigo-600 text-xs font-black uppercase">
+                                                        {vendor.full_name?.substring(0, 2) || 'VN'}
+                                                    </AvatarFallback>
                                                 </Avatar>
-                                                <span className="text-sm font-bold text-slate-600 truncate max-w-[120px]">{vendor.profiles?.full_name || 'Inconnu'}</span>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 leading-none mb-1">{vendor.full_name || 'Vendeur sans nom'}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {vendor.id.substring(0, 8)}</p>
+                                                </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                                <MapPin className="w-3 h-3 text-slate-400" />
-                                                {vendor.city || 'Cameroun'}
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                    <Mail className="w-3 h-3 text-slate-400" /> {vendor.email || 'Pas d\'email'}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                    <Phone className="w-3 h-3 text-slate-400" /> {vendor.phone || 'Non renseigné'}
+                                                </div>
                                             </div>
                                         </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge className="bg-indigo-50 text-indigo-600 border-none font-black text-xs px-2.5 py-1 rounded-lg">
+                                                {vendor.shops_count}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                                <Calendar className="w-3 h-3 text-slate-400" />
+                                            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
                                                 {vendor.created_at ? format(new Date(vendor.created_at), 'dd MMM yyyy', { locale: fr }) : 'N/A'}
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             {vendor.is_verified ? (
-                                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[10px] px-2 py-1 flex w-fit items-center gap-1">
-                                                    VÉRIFIÉ
+                                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1.5">
+                                                    <ShieldCheck className="w-3 h-3" />
+                                                    Vérifié
                                                 </Badge>
                                             ) : (
-                                                <Badge className="bg-amber-50 text-amber-600 border-none font-black text-[10px] px-2 py-1 flex w-fit items-center gap-1">
-                                                    NON VÉRIFIÉ
+                                                <Badge className="bg-amber-50 text-amber-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1.5">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                    En attente
                                                 </Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
-                                                <MoreVertical className="w-4 h-4 text-slate-400" />
-                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="rounded-xl hover:bg-slate-100">
+                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl border-slate-100 shadow-xl">
+                                                    <DropdownMenuItem onClick={() => { setSelectedVendor(vendor); setIsDetailsOpen(true); }} className="p-3 rounded-xl gap-3 font-bold cursor-pointer">
+                                                        <Eye className="w-4 h-4 text-slate-400" />
+                                                        Détails du gérant
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleAction(vendor.id, 'verification')} className="p-3 rounded-xl gap-3 font-bold cursor-pointer">
+                                                        <ShieldCheck className="w-4 h-4 text-slate-400" />
+                                                        Vérifier documents
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleAction(vendor.id, 'ban')} className="p-3 rounded-xl gap-3 font-bold cursor-pointer text-red-500">
+                                                        <UserX className="w-4 h-4" />
+                                                        Révoquer rôle vendeur
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-64 text-center text-slate-400 font-bold">Aucun vendeur trouvé</TableCell>
+                                    <TableCell colSpan={6} className="h-64 text-center">
+                                        <div className="flex flex-col items-center justify-center space-y-3">
+                                            <SearchX className="w-10 h-10 text-slate-200" />
+                                            <p className="text-slate-400 font-medium">Aucun gérant trouvé</p>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -371,115 +272,90 @@ const AdminVendors = () => {
             </div>
 
             {/* Vendor Details Dialog */}
-            {selectedVendor && (
-                <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden shadow-sm">
-                                    {selectedVendor.logo_url ? (
-                                        <img src={selectedVendor.logo_url} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <Store className="w-8 h-8 text-slate-300" />
-                                    )}
-                                </div>
-                                <div>
-                                    <DialogTitle className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                                        {selectedVendor.shop_name}
-                                        {selectedVendor.is_verified && <BadgeCheck className="w-6 h-6 text-primary fill-primary/10" />}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-slate-500 font-medium flex items-center gap-2">
-                                        Vendeur: <span className="text-slate-700 font-bold">{selectedVendor.profiles?.full_name || 'Inconnu'}</span>
-                                        {selectedVendor.city && <span>• {selectedVendor.city}</span>}
-                                    </DialogDescription>
-                                </div>
+            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-slate-900 text-white">
+                        <div className="flex items-center gap-6">
+                            <Avatar className="w-20 h-20 border-4 border-white/10 rounded-3xl overflow-hidden">
+                                <AvatarImage src={selectedVendor?.avatar_url} />
+                                <AvatarFallback className="bg-indigo-500 text-white text-2xl font-black uppercase">
+                                    {selectedVendor?.full_name?.substring(0, 2)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <DialogTitle className="text-3xl font-black">{selectedVendor?.full_name}</DialogTitle>
+                                <DialogDescription className="text-indigo-300 font-bold flex items-center gap-2 mt-1">
+                                    Compte Vendeur Professionnel
+                                    {selectedVendor?.is_verified && <ShieldCheck className="w-4 h-4" />}
+                                </DialogDescription>
                             </div>
-                        </DialogHeader>
+                        </div>
+                    </DialogHeader>
 
-                        <div className="space-y-6 py-4">
-                            {/* Quick Actions */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                <Button
-                                    className={`${selectedVendor.is_verified ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} h-12 rounded-xl text-xs font-bold`}
-                                    onClick={() => handleVerifyVendor(selectedVendor.id, !selectedVendor.is_verified)}
-                                >
-                                    {selectedVendor.is_verified ? <XCircle className="w-3.5 h-3.5 mr-2" /> : <CheckCircle className="w-3.5 h-3.5 mr-2" />}
-                                    {selectedVendor.is_verified ? 'Retirer Verif.' : 'Certifier'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="border-slate-200 hover:bg-slate-50 h-12 rounded-xl text-xs font-bold text-slate-600"
-                                    onClick={() => navigate(`/admin/products?search=${encodeURIComponent(selectedVendor.shop_name)}`)}
-                                >
-                                    <Package className="w-3.5 h-3.5 mr-2" /> Voir Produits
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="border-slate-200 hover:bg-slate-50 h-12 rounded-xl text-xs font-bold text-slate-600"
-                                    onClick={() => toast.info('Voir historique commandes (Bientôt)')}
-                                >
-                                    <Wallet className="w-3.5 h-3.5 mr-2" /> Historique
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100 h-12 rounded-xl text-xs font-bold"
-                                    onClick={() => handleBanShop(selectedVendor.id, selectedVendor.shop_name)}
-                                >
-                                    <Ban className="w-3.5 h-3.5 mr-2" /> Bannir
-                                </Button>
-                            </div>
-
-                            <Separator />
-
-                            {/* Key Stats */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Produits</p>
-                                    <p className="text-xl font-black text-slate-800">{vendorStats.products}</p>
-                                </div>
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Commandes</p>
-                                    <p className="text-xl font-black text-slate-800">{vendorStats.orders}</p>
-                                </div>
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vol. Ventes EST.</p>
-                                    <p className="text-xl font-black text-emerald-600">{formatPrice(vendorStats.revenue)}</p>
-                                </div>
-                            </div>
-
-                            {/* Contact & Info */}
+                    <div className="p-8 space-y-8 bg-white">
+                        <div className="grid grid-cols-2 gap-8">
                             <div className="space-y-4">
-                                <h3 className="font-bold flex items-center gap-2">
-                                    <Store className="w-4 h-4 text-primary" /> Informations Boutique
-                                </h3>
-                                <div className="bg-white border border-slate-100 rounded-xl overflow-hidden text-sm">
-                                    {selectedVendor.description && (
-                                        <div className="bg-slate-50 p-4 text-slate-600 italic border-b border-slate-100">
-                                            "{selectedVendor.description}"
-                                        </div>
-                                    )}
-                                    <div className="flex border-b border-slate-50 last:border-0">
-                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Email Contact</div>
-                                        <div className="w-2/3 p-3 font-medium text-slate-800">{selectedVendor.profiles?.email || 'N/A'}</div>
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Coordonnées</h4>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 text-slate-600">
+                                        <Mail className="w-4 h-4 text-slate-400" />
+                                        <span className="font-bold text-sm">{selectedVendor?.email}</span>
                                     </div>
-                                    <div className="flex border-b border-slate-50 last:border-0">
-                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Téléphone</div>
-                                        <div className="w-2/3 p-3 font-medium text-slate-800">{selectedVendor.profiles?.phone || 'N/A'}</div>
+                                    <div className="flex items-center gap-3 text-slate-600">
+                                        <Phone className="w-4 h-4 text-slate-400" />
+                                        <span className="font-bold text-sm">{selectedVendor?.phone || 'Non renseigné'}</span>
                                     </div>
-                                    <div className="flex border-b border-slate-50 last:border-0">
-                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Adresse</div>
-                                        <div className="w-2/3 p-3 text-slate-800">{selectedVendor.address || 'Non renseignée'}</div>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Statistiques Compte</h4>
+                                <div className="flex items-center gap-4">
+                                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex-1">
+                                        <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Boutiques</p>
+                                        <p className="text-2xl font-black text-indigo-600">{selectedVendor?.shops_count}</p>
                                     </div>
-                                    <div className="flex border-b border-slate-50 last:border-0">
-                                        <div className="w-1/3 bg-slate-50 p-3 font-medium text-slate-500">Rejoint le</div>
-                                        <div className="w-2/3 p-3 text-slate-800">{selectedVendor.created_at ? format(new Date(selectedVendor.created_at), 'dd MMMM yyyy', { locale: fr }) : 'N/A'}</div>
+                                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex-1">
+                                        <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Actif depuis</p>
+                                        <p className="text-xs font-black text-slate-800">
+                                            {selectedVendor?.created_at ? format(new Date(selectedVendor.created_at), 'MMM yyyy') : 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </DialogContent>
-                </Dialog>
-            )}
+
+                        <Separator className="bg-slate-100" />
+
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Boutiques rattachées</h4>
+                            <div className="space-y-3">
+                                {selectedVendor?.shops?.map((shop: any) => (
+                                    <div key={shop.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-indigo-200 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-slate-200">
+                                                <Store className="w-5 h-5 text-slate-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-800">{shop.shop_name}</p>
+                                                <div className="flex gap-2 mt-0.5">
+                                                    {shop.is_verified && <Badge className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0 h-4 border-none uppercase">Vérifiée</Badge>}
+                                                    {!shop.is_active && <Badge className="bg-slate-200 text-slate-600 text-[8px] font-black px-1.5 py-0 h-4 border-none uppercase">Invisible</Badge>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <ChevronRight className="w-5 h-5 text-slate-400" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                {selectedVendor?.shops_count === 0 && (
+                                    <p className="text-center py-4 text-slate-400 font-medium italic">Ce manager n'a pas encore de boutique créée.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     );
 };
