@@ -75,7 +75,7 @@ const Profile = () => {
             // Fallback: Check if user exists in vendors table even if roles are missing
             const { data: vendorCheck } = await supabase
                 .from('vendors')
-                .select('id, shop_name, slug, description, logo_url, cover_image_url')
+                .select('id, shop_name, slug, description, logo_url, cover_image_url, city')
                 .eq('user_id', session.user.id)
                 .maybeSingle();
 
@@ -105,7 +105,8 @@ const Profile = () => {
                     shop_name: vendorCheck.shop_name,
                     description: vendorCheck.description,
                     logo_url: vendorCheck.logo_url,
-                    cover_image_url: vendorCheck.cover_image_url
+                    cover_image_url: vendorCheck.cover_image_url,
+                    city: vendorCheck.city || activeProfile.city // Prioritize shop city for vendors
                 };
             }
 
