@@ -278,10 +278,26 @@ const AdminDashboard = () => {
             isUp: stats.vendors.trend >= 0
         },
         {
+            label: 'Revenus Total',
+            value: formatPrice(stats.totalRevenue.value),
+            icon: Wallet,
+            color: 'bg-emerald-500',
+            trend: `${stats.totalRevenue.trend > 0 ? '+' : ''}${stats.totalRevenue.trend.toFixed(1)}%`,
+            isUp: stats.totalRevenue.trend >= 0
+        },
+        {
+            label: 'Commandes',
+            value: stats.orders.value,
+            icon: Package,
+            color: 'bg-indigo-500',
+            trend: `${stats.orders.trend > 0 ? '+' : ''}${stats.orders.trend.toFixed(1)}%`,
+            isUp: stats.orders.trend >= 0
+        },
+        {
             label: 'Administrateurs',
             value: stats.admins.value,
             icon: Shield,
-            color: 'bg-indigo-600',
+            color: 'bg-slate-600',
             trend: 'Système',
             isUp: true
         },
@@ -342,7 +358,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {statCards.map((stat, i) => (
                         <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-lg transition-all duration-300 group">
                             <div className="flex items-start justify-between mb-4">
