@@ -169,7 +169,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
                           <button
                             key={v.id}
                             onClick={() => {
-                              navigate(`/catalogue?q=${encodeURIComponent(v.shop_name)}`);
+                              navigate(`/boutique/${v.id}`);
                               setShowSuggestions(false);
                             }}
                             className="w-full flex items-center gap-3 p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-left border border-transparent hover:border-slate-100"

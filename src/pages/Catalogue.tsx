@@ -432,6 +432,7 @@ const Catalogue = () => {
                       originalPrice={product.original_price}
                       image={product.images?.[0]}
                       vendorName={product.vendor?.shop_name || 'Boutique Yarid'}
+                      vendorId={product.vendor_id}
                       vendorCity={product.vendor?.city || 'Cameroun'}
                       isVerified={product.vendor?.is_verified}
                       stock={product.stock}

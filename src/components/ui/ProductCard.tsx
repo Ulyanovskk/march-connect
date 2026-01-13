@@ -16,6 +16,7 @@ interface ProductCardProps {
   originalPrice?: number | null;
   image: string;
   vendorName?: string;
+  vendorId?: string;
   vendorCity?: string;
   isVerified?: boolean;
   stock?: number;
@@ -28,6 +29,7 @@ const ProductCard = ({
   originalPrice,
   image,
   vendorName,
+  vendorId,
   vendorCity,
   isVerified,
   stock = 1,
@@ -137,7 +139,13 @@ const ProductCard = ({
         {/* Vendor info */}
         {vendorName && (
           <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mb-1.5">
-            <span className="truncate max-w-[60px] sm:max-w-none">{vendorName}</span>
+            {vendorId ? (
+              <Link to={`/boutique/${vendorId}`} className="truncate max-w-[60px] sm:max-w-none hover:text-primary transition-colors font-bold">
+                {vendorName}
+              </Link>
+            ) : (
+              <span className="truncate max-w-[60px] sm:max-w-none">{vendorName}</span>
+            )}
             {isVerified && <BadgeCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />}
             {vendorCity && (
               <div className="flex items-center gap-0.5 shrink-0 ml-auto sm:ml-0">

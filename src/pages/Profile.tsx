@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
     User, Store, Mail, ShieldCheck, Save, Loader2, Calendar,
     LogOut, Settings, Bell, CreditCard, ShoppingBag,
-    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2, QrCode
+    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2, QrCode, Image as ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
@@ -57,7 +57,36 @@ const Profile = () => {
                 .single();
 
             if (profileError) throw profileError;
-            setProfile(profileData);
+
+            // Fetch Role
+            const { data: roleData } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', session.user.id)
+                .single();
+
+            let mergedProfile = { ...profileData, role: roleData?.role || 'client' };
+
+            // Fetch Vendor data if applicable
+            if (mergedProfile.role === 'vendor') {
+                const { data: vendorData } = await supabase
+                    .from('vendors')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+                    .single();
+
+                if (vendorData) {
+                    mergedProfile = {
+                        ...mergedProfile,
+                        shop_name: vendorData.shop_name,
+                        description: vendorData.description,
+                        logo_url: vendorData.logo_url,
+                        cover_image_url: vendorData.cover_image_url
+                    };
+                }
+            }
+
+            setProfile(mergedProfile);
 
             // Fetch Client Orders
             const { data: ordersData, error: ordersError } = await (supabase as any)
@@ -91,9 +120,8 @@ const Profile = () => {
                 .from('profiles')
                 .update({
                     full_name: profile.full_name,
-                    shop_name: profile.shop_name,
-                    description: profile.description,
                     city: profile.city,
+                    avatar_url: profile.avatar_url,
                 })
                 .eq('id', profile.id);
 
@@ -103,9 +131,11 @@ const Profile = () => {
                 const { error: vendorErr } = await supabase
                     .from('vendors')
                     .update({
-                        name: profile.shop_name,
+                        shop_name: profile.shop_name,
                         description: profile.description,
                         city: profile.city,
+                        logo_url: profile.logo_url,
+                        cover_image_url: profile.cover_image_url
                     })
                     .eq('user_id', profile.id);
 
@@ -119,6 +149,30 @@ const Profile = () => {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('L\'image est trop lourde (max 2MB)');
+            return;
+        }
+
+        const toastId = toast.loading('Traitement de l\'image...');
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const base64 = event.target?.result as string;
+            setProfile((prev: any) => ({ ...prev, [field]: base64 }));
+            toast.dismiss(toastId);
+            toast.success('Image chargée (n\'oubliez pas d\'enregistrer)');
+        };
+        reader.onerror = () => {
+            toast.dismiss(toastId);
+            toast.error('Erreur lors de la lecture du fichier');
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleLogout = async () => {
@@ -235,18 +289,32 @@ const Profile = () => {
                             <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden bg-white">
                                 <div className="p-8 flex flex-col items-center text-center border-b">
                                     <div className="relative group mb-4">
-                                        <div className="w-24 h-24 rounded-full sm:rounded-3xl bg-gradient-to-br from-primary to-primary-foreground p-1 shadow-lg shadow-primary/20">
-                                            <div className="w-full h-full rounded-full sm:rounded-[20px] bg-white flex items-center justify-center text-4xl font-black text-primary overflow-hidden">
+                                        <div
+                                            onClick={() => document.getElementById('avatar-upload')?.click()}
+                                            className="w-24 h-24 rounded-full sm:rounded-3xl bg-gradient-to-br from-primary to-primary-foreground p-1 shadow-lg shadow-primary/20 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                                        >
+                                            <div className="w-full h-full rounded-full sm:rounded-[20px] bg-white flex items-center justify-center text-4xl font-black text-primary overflow-hidden relative">
                                                 {profile?.avatar_url ? (
                                                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                                 ) : (
                                                     profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()
                                                 )}
+
+                                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Camera className="w-8 h-8 text-white drop-shadow-lg" />
+                                                </div>
                                             </div>
                                         </div>
-                                        <button className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-primary hover:scale-110 transition-transform border border-muted">
+                                        <input
+                                            id="avatar-upload"
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={(e) => handleImageChange(e, 'avatar_url')}
+                                        />
+                                        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-primary border border-muted pointer-events-none">
                                             <Camera className="w-4 h-4" />
-                                        </button>
+                                        </div>
                                     </div>
                                     <div className="space-y-1 w-full flex flex-col items-center">
                                         <h2 className="text-xl font-bold tracking-tight truncate w-full max-w-[240px]">{profile?.full_name || 'Utilisateur'}</h2>
@@ -416,6 +484,70 @@ const Profile = () => {
                                                                     className="pl-12 h-14 bg-muted/30 border-none rounded-2xl font-medium focus-visible:ring-2 focus-visible:ring-orange-500/20"
                                                                     placeholder="Ex: Douala"
                                                                 />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-6">
+                                                        <Label className="text-xs font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Images de la Boutique</Label>
+                                                        <div className="grid sm:grid-cols-2 gap-6">
+                                                            {/* Logo Upload */}
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase">Logo de la Boutique</Label>
+                                                                <div
+                                                                    className="relative group w-32 h-32 mx-auto sm:mx-0 cursor-pointer"
+                                                                    onClick={() => document.getElementById('shop-logo-upload')?.click()}
+                                                                >
+                                                                    <div className="w-full h-full rounded-2xl bg-muted/30 border-2 border-dashed border-muted-foreground/20 flex items-center justify-center overflow-hidden transition-all group-hover:border-orange-500/50">
+                                                                        {profile?.logo_url ? (
+                                                                            <img src={profile.logo_url} alt="" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                                                                        )}
+                                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <Camera className="w-6 h-6 text-white" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <input
+                                                                        id="shop-logo-upload"
+                                                                        type="file"
+                                                                        className="hidden"
+                                                                        accept="image/*"
+                                                                        onChange={(e) => handleImageChange(e, 'logo_url')}
+                                                                    />
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground text-center sm:text-left italic">Idéalement un carré (PNG/JPG, max 2Mo)</p>
+                                                            </div>
+
+                                                            {/* Cover Upload */}
+                                                            <div className="space-y-3">
+                                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase">Image de Couverture</Label>
+                                                                <div
+                                                                    className="relative group w-full h-32 cursor-pointer"
+                                                                    onClick={() => document.getElementById('shop-cover-upload')?.click()}
+                                                                >
+                                                                    <div className="w-full h-full rounded-2xl bg-muted/30 border-2 border-dashed border-muted-foreground/20 flex items-center justify-center overflow-hidden transition-all group-hover:border-orange-500/50">
+                                                                        {profile?.cover_image_url ? (
+                                                                            <img src={profile.cover_image_url} alt="" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <div className="text-center">
+                                                                                <ImageIcon className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                                                                                <span className="text-[10px] text-muted-foreground font-medium">Dimension recommandée: 1200x400</span>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <Camera className="w-6 h-6 text-white" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <input
+                                                                        id="shop-cover-upload"
+                                                                        type="file"
+                                                                        className="hidden"
+                                                                        accept="image/*"
+                                                                        onChange={(e) => handleImageChange(e, 'cover_image_url')}
+                                                                    />
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground text-center sm:text-left italic">S'affiche en arrière-plan sur votre page</p>
                                                             </div>
                                                         </div>
                                                     </div>

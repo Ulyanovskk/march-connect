@@ -37,6 +37,7 @@ import ClientOnboarding from "./pages/onboarding/ClientOnboarding";
 import VendorOnboarding from "./pages/onboarding/VendorOnboarding";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import ShopDetail from "./pages/ShopDetail";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/shop" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/catalogue" element={<ProtectedRoute><Catalogue /></ProtectedRoute>} />
             <Route path="/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
+            <Route path="/boutique/:id" element={<ShopDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />

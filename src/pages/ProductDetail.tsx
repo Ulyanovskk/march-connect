@@ -331,6 +331,11 @@ const ProductDetail = () => {
                       Membre depuis {new Date((product.vendor as any)?.created_at).getFullYear() || 2024}
                     </span>
                   </div>
+                  <Button asChild variant="outline" size="sm" className="mt-4 w-full rounded-xl border-primary/20 text-primary hover:bg-primary hover:text-white transition-all font-bold">
+                    <Link to={`/boutique/${product.vendor_id}`}>
+                      Voir la boutique
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </div>
