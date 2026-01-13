@@ -58,14 +58,50 @@ const AdminDashboard = () => {
                 await supabase.auth.refreshSession();
 
                 // Fetch counts
-                const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+                // Fetch counts - we need IDs for accurate client filtering
+                // Fetch IDs for counting
+                const { data: profilesData } = await supabase.from('profiles').select('id');
                 const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true });
                 const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
                 const { count: adminCount } = await supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'admin');
 
-                // Strict client count: Total - Admins - Vendors (approximate but useful for dashboard)
-                const clientCount = (userCount || 0) - (adminCount || 0) - (vendorCount || 0);
-                const safeClientCount = clientCount > 0 ? clientCount : 0;
+                // EXTRA FETCHES FOR TOTAL USERS to match Users.tsx
+                const { data: _allVendorIds } = await supabase.from('vendors').select('user_id');
+                const { data: _allUserRoles } = await supabase.from('user_roles').select('user_id');
+
+                const allUniqueUserIds = new Set([
+                    ...(profilesData?.map(p => p.id) || []),
+                    ...(_allVendorIds?.map(v => v.user_id) || []),
+                    ...(_allUserRoles?.map(r => r.user_id) || [])
+                ]);
+                const totalUniqueUsers = allUniqueUserIds.size;
+
+                // Accurate Client Count Calculation
+                // Fetch data to identify non-clients (vendors and admins) to handle overlaps correctly
+                const { data: vendorIds } = await supabase.from('vendors').select('user_id');
+                const { data: userRoles } = await supabase.from('user_roles').select('user_id, role');
+
+                const nonClientSet = new Set<string>();
+
+                // Add vendors from table to non-client set
+                vendorIds?.forEach(v => {
+                    if (v.user_id) nonClientSet.add(v.user_id);
+                });
+
+                // Add admins and vendors (by role) to non-client set
+                userRoles?.forEach(r => {
+                    if (r.role === 'admin' || r.role === 'vendor') {
+                        nonClientSet.add(r.user_id);
+                    }
+                });
+
+                // Count profiles that are NOT in the non-client set
+                let strictClientCount = 0;
+                if (profilesData) {
+                    strictClientCount = profilesData.filter(p => !nonClientSet.has(p.id)).length;
+                }
+
+                const safeClientCount = strictClientCount;
 
                 // Fetch orders with total_amount matching Payment.tsx
                 const { data: ordersData, error: ordersError } = await supabase
@@ -151,7 +187,7 @@ const AdminDashboard = () => {
 
                 setStats({
                     users: {
-                        value: userCount || 0,
+                        value: totalUniqueUsers,
                         trend: calculateTrend(newUsersCurrent, newUsersPrevious)
                     },
                     clients: {
