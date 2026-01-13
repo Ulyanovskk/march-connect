@@ -102,20 +102,36 @@ const AdminUsers = () => {
             // Fetch all shops to identify vendors without explicit role
             const { data: shopsData } = await supabase
                 .from('vendors')
-                .select('user_id');
+                .select('user_id, shop_name');
 
-            // Merge roles and shop status into profiles
-            const mergedUsers = (profilesData || []).map(profile => {
-                const userRoles = rolesData?.filter(role => role.user_id === profile.id) || [];
-                const hasShop = shopsData?.some(shop => shop.user_id === profile.id);
+            // 1. Get all unique user IDs from all sources
+            const allUserIds = Array.from(new Set([
+                ...(profilesData || []).map(p => p.id),
+                ...(rolesData || []).map(r => r.user_id),
+                ...(shopsData || []).map(s => s.user_id)
+            ]));
+
+            // 2. Merge everything based on all available IDs
+            const mergedUsers = allUserIds.map(userId => {
+                const profile = profilesData?.find(p => p.id === userId);
+                const userRoles = rolesData?.filter(role => role.user_id === userId) || [];
+                const userShops = shopsData?.filter(shop => shop.user_id === userId) || [];
+                const hasShop = userShops.length > 0;
 
                 // Add virtual vendor role if they have a shop but no explicit role
                 if (hasShop && !userRoles.some(r => r.role === 'vendor')) {
                     userRoles.push({ role: 'vendor' } as any);
                 }
 
+                // If profile is missing, create a placeholder
                 return {
-                    ...profile,
+                    id: userId,
+                    full_name: profile?.full_name || userShops[0]?.shop_name || 'Utilisateur sans profil',
+                    email: profile?.email || 'N/A',
+                    phone: profile?.phone || 'N/A',
+                    avatar_url: profile?.avatar_url,
+                    created_at: profile?.created_at || (userShops[0] as any)?.created_at || new Date().toISOString(),
+                    is_blocked: profile?.is_blocked || false,
                     user_roles: userRoles
                 };
             });
