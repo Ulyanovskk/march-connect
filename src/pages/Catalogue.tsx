@@ -45,7 +45,14 @@ const Catalogue = () => {
       // Requête simple et directe
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          vendor:vendors (
+            shop_name,
+            is_verified,
+            city
+          )
+        `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -394,9 +401,9 @@ const Catalogue = () => {
                       price={product.price}
                       originalPrice={product.original_price}
                       image={product.images?.[0]}
-                      vendorName={product.vendor?.shop_name || 'Vendeur Vérifié'}
+                      vendorName={product.vendor?.shop_name || 'Boutique Yarid'}
                       vendorCity={product.vendor?.city || 'Cameroun'}
-                      isVerified={true}
+                      isVerified={product.vendor?.is_verified}
                       stock={product.stock}
                     />
                   ))}

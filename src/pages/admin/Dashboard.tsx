@@ -41,7 +41,8 @@ const AdminDashboard = () => {
         totalRevenue: { value: 0, trend: 0 },
         pendingEscrow: 0,
         deliveryPending: 0,
-        problems: 0
+        problems: 0,
+        pendingVendors: [] as any[]
     });
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState<any[]>([]);
@@ -161,8 +162,18 @@ const AdminDashboard = () => {
                     },
                     pendingEscrow: pendingEscrow,
                     deliveryPending: deliveryPending,
-                    problems: problems
+                    problems: problems,
+                    pendingVendors: []
                 });
+
+                // Fetch pending vendors separately to include in stats
+                const { data: pendingVendorsData } = await supabase
+                    .from('vendors')
+                    .select('*, profiles:user_id(full_name, avatar_url)')
+                    .eq('is_verified', false)
+                    .limit(5);
+
+                setStats(s => ({ ...s, pendingVendors: pendingVendorsData || [] }));
 
                 // Generate chart data (last 7 days)
                 const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -231,7 +242,29 @@ const AdminDashboard = () => {
         { label: 'Livraisons en cours', value: stats.deliveryPending, icon: Clock, status: 'info' },
         { label: 'Livrées', value: (stats.orders.value || 0) - stats.deliveryPending - stats.problems, icon: CheckCircle2, status: 'success' },
         { label: 'Litiges/Problèmes', value: stats.problems, icon: AlertCircle, status: 'danger' },
+        { label: 'Boutiques à certifier', value: stats.pendingVendors.length, icon: Shield, status: 'warning' },
     ];
+
+    const handleVerifyVendor = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('vendors')
+                .update({ is_verified: true })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            // @ts-ignore
+            import('sonner').then(({ toast }) => toast.success("Boutique certifiée avec succès !"));
+            setStats(prev => ({
+                ...prev,
+                pendingVendors: prev.pendingVendors.filter(v => v.id !== id)
+            }));
+        } catch (error: any) {
+            // @ts-ignore
+            import('sonner').then(({ toast }) => toast.error("Erreur: " + error.message));
+        }
+    };
 
     return (
         <AdminLayout>
@@ -365,7 +398,51 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Bottom Section - To be continued */}
+                {/* Bottom Section - Pending Vendors */}
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-soft">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800 tracking-tight">Certification des Boutiques</h3>
+                            <p className="text-sm text-slate-500 font-medium font-medium">Boutiques en attente de vérification</p>
+                        </div>
+                        <Button variant="ghost" className="text-primary font-bold" onClick={() => window.location.href = '/admin/shops'}>
+                            Toutes les boutiques <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {stats.pendingVendors.length > 0 ? (
+                            stats.pendingVendors.map((vendor) => (
+                                <div key={vendor.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between group hover:border-primary/20 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200">
+                                            {vendor.logo_url ? (
+                                                <img src={vendor.logo_url} alt="" className="w-full h-full object-cover rounded-xl" />
+                                            ) : (
+                                                <Store className="w-5 h-5 text-slate-300" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm leading-none mb-1">{vendor.shop_name}</p>
+                                            <p className="text-[10px] font-medium text-slate-400">Par {vendor.profiles?.full_name || 'Inconnu'}</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => handleVerifyVendor(vendor.id)}
+                                        className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-bold text-[10px] px-3 shadow-md shadow-emerald-600/20"
+                                    >
+                                        Certifier
+                                    </Button>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="col-span-full py-10 text-center text-slate-400 font-bold bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
+                                Aucune boutique en attente de certification
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </AdminLayout>
     );

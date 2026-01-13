@@ -13,7 +13,9 @@ const PopularProducts = () => {
         .select(`
           *,
           vendor:vendors (
-            shop_name
+            shop_name,
+            is_verified,
+            city
           )
         `)
         .eq('is_active', true)
@@ -66,9 +68,9 @@ const PopularProducts = () => {
                 price={product.price}
                 originalPrice={product.original_price}
                 image={product.images?.[0]}
-                vendorName={product.vendor?.shop_name || 'Vendeur Yarid'}
-                vendorCity="Cameroun"
-                isVerified={true}
+                vendorName={product.vendor?.shop_name || 'Boutique Yarid'}
+                vendorCity={product.vendor?.city || 'Cameroun'}
+                isVerified={product.vendor?.is_verified}
                 stock={product.stock}
               />
             ))}

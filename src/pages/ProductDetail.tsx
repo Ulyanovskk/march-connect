@@ -52,7 +52,7 @@ const ProductDetail = () => {
       // Récupérer les données du vendeur
       const { data: vendorData, error: vendorError } = await supabase
         .from('vendors')
-        .select('shop_name, description, created_at')
+        .select('shop_name, is_verified, city, description, created_at')
         .eq('id', productData.vendor_id)
         .single();
 
@@ -132,8 +132,8 @@ const ProductDetail = () => {
       price: product.price,
       originalPrice: product.original_price,
       image: images[0],
-      vendorName: (product.vendor as any)?.shop_name || 'Vendeur Yarid',
-      vendorCity: 'Cameroun',
+      vendorName: (product.vendor as any)?.shop_name || 'Boutique Yarid',
+      vendorCity: (product.vendor as any)?.city || 'Cameroun',
     }, quantity);
     toast.success(`${product.name} ajouté au panier !`);
   };
@@ -315,16 +315,18 @@ const ProductDetail = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{(product.vendor as any)?.shop_name || 'Boutique Partenaire'}</span>
-                    <BadgeCheck className="w-5 h-5 text-yarid-blue fill-yarid-blue/20" />
+                    {(product.vendor as any)?.is_verified && <BadgeCheck className="w-5 h-5 text-yarid-blue fill-yarid-blue/20" />}
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                     <MapPin className="w-4 h-4" />
-                    Cameroun
+                    {(product.vendor as any)?.city || 'Cameroun'}
                   </div>
                   <div className="flex items-center gap-4 mt-3">
-                    <span className="text-xs bg-yarid-green/10 text-yarid-green px-2 py-1 rounded-full">
-                      Vendeur Vérifié
-                    </span>
+                    {(product.vendor as any)?.is_verified && (
+                      <span className="text-xs bg-yarid-green/10 text-yarid-green px-2 py-1 rounded-full font-bold">
+                        Vendeur Vérifié
+                      </span>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       Membre depuis {new Date((product.vendor as any)?.created_at).getFullYear() || 2024}
                     </span>
