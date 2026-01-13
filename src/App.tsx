@@ -24,6 +24,7 @@ import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
+import AdminClients from "./pages/admin/Clients";
 import AdminVendors from "./pages/admin/Vendors";
 import AdminShops from "./pages/admin/Shops";
 import AdminOrders from "./pages/admin/Orders";
@@ -89,6 +90,7 @@ const App = () => (
             {/* Protected Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/clients" element={<ProtectedRoute requiredRole="admin"><AdminClients /></ProtectedRoute>} />
             <Route path="/admin/vendors" element={<ProtectedRoute requiredRole="admin"><AdminVendors /></ProtectedRoute>} />
             <Route path="/admin/shops" element={<ProtectedRoute requiredRole="admin"><AdminShops /></ProtectedRoute>} />
             <Route path="/admin/products" element={<ProtectedRoute requiredRole="admin"><AdminProducts /></ProtectedRoute>} />

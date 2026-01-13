@@ -35,7 +35,9 @@ import { fr } from 'date-fns/locale';
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
         users: { value: 0, trend: 0 },
+        clients: { value: 0, trend: 0 },
         vendors: { value: 0, trend: 0 },
+        admins: { value: 0, trend: 0 },
         products: 0,
         orders: { value: 0, trend: 0 },
         totalRevenue: { value: 0, trend: 0 },
@@ -59,6 +61,11 @@ const AdminDashboard = () => {
                 const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
                 const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true });
                 const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
+                const { count: adminCount } = await supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'admin');
+
+                // Strict client count: Total - Admins - Vendors (approximate but useful for dashboard)
+                const clientCount = (userCount || 0) - (adminCount || 0) - (vendorCount || 0);
+                const safeClientCount = clientCount > 0 ? clientCount : 0;
 
                 // Fetch orders with total_amount matching Payment.tsx
                 const { data: ordersData, error: ordersError } = await supabase
@@ -147,9 +154,17 @@ const AdminDashboard = () => {
                         value: userCount || 0,
                         trend: calculateTrend(newUsersCurrent, newUsersPrevious)
                     },
+                    clients: {
+                        value: safeClientCount,
+                        trend: calculateTrend(newUsersCurrent - newVendorsCurrent, newUsersPrevious - newVendorsPrevious)
+                    },
                     vendors: {
                         value: vendorCount || 0,
                         trend: calculateTrend(newVendorsCurrent, newVendorsPrevious)
+                    },
+                    admins: {
+                        value: adminCount || 0,
+                        trend: 0
                     },
                     products: productCount || 0,
                     orders: {
@@ -203,44 +218,45 @@ const AdminDashboard = () => {
 
     const statCards = [
         {
-            label: 'Clients',
+            label: 'Utilisateurs',
             value: stats.users.value,
             icon: Users,
-            color: 'bg-blue-500',
+            color: 'bg-slate-800',
             trend: `${stats.users.trend > 0 ? '+' : ''}${stats.users.trend.toFixed(1)}%`,
             isUp: stats.users.trend >= 0
         },
         {
-            label: 'Vendeurs',
+            label: 'Clients (Acheteurs)',
+            value: stats.clients.value,
+            icon: ShoppingCart,
+            color: 'bg-blue-500',
+            trend: `${stats.clients.trend > 0 ? '+' : ''}${stats.clients.trend.toFixed(1)}%`,
+            isUp: stats.clients.trend >= 0
+        },
+        {
+            label: 'Vendeurs Pro',
             value: stats.vendors.value,
             icon: Store,
-            color: 'bg-indigo-500',
+            color: 'bg-orange-500',
             trend: `${stats.vendors.trend > 0 ? '+' : ''}${stats.vendors.trend.toFixed(1)}%`,
             isUp: stats.vendors.trend >= 0
         },
         {
-            label: 'Commandes',
-            value: stats.orders.value,
-            icon: ShoppingCart,
-            color: 'bg-orange-500',
-            trend: `${stats.orders.trend > 0 ? '+' : ''}${stats.orders.trend.toFixed(1)}%`,
-            isUp: stats.orders.trend >= 0
-        },
-        {
-            label: 'Revenus Total',
-            value: formatPrice(stats.totalRevenue.value),
-            icon: TrendingUp,
-            color: 'bg-emerald-500',
-            trend: `${stats.totalRevenue.trend > 0 ? '+' : ''}${stats.totalRevenue.trend.toFixed(1)}%`,
-            isUp: stats.totalRevenue.trend >= 0
+            label: 'Administrateurs',
+            value: stats.admins.value,
+            icon: Shield,
+            color: 'bg-indigo-600',
+            trend: 'Système',
+            isUp: true
         },
     ];
 
     const financialCards = [
-        { label: 'En Escrow', value: formatPrice(stats.pendingEscrow), icon: Wallet, status: 'warning' },
+        { label: 'Ventes Totales', value: formatPrice(stats.totalRevenue.value), icon: TrendingUp, status: 'success' },
+        { label: 'Commandes Totales', value: stats.orders.value, icon: ShoppingCart, status: 'info' },
+        { label: 'En Escrow (Sécurisé)', value: formatPrice(stats.pendingEscrow), icon: Wallet, status: 'warning' },
         { label: 'Livraisons en cours', value: stats.deliveryPending, icon: Clock, status: 'info' },
-        { label: 'Livraisons en cours', value: stats.deliveryPending, icon: Clock, status: 'info' },
-        { label: 'Livrées', value: (stats.orders.value || 0) - stats.deliveryPending - stats.problems, icon: CheckCircle2, status: 'success' },
+        { label: 'Livrées (Terminées)', value: (stats.orders.value || 0) - stats.deliveryPending - stats.problems, icon: CheckCircle2, status: 'success' },
         { label: 'Litiges/Problèmes', value: stats.problems, icon: AlertCircle, status: 'danger' },
         { label: 'Boutiques à certifier', value: stats.pendingVendors.length, icon: Shield, status: 'warning' },
     ];

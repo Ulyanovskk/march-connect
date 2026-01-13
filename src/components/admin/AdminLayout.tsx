@@ -18,7 +18,8 @@ import {
     ChevronRight,
     ShieldCheck,
     Building2,
-    FileText
+    FileText,
+    User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -69,7 +70,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Tableau de bord', id: 'dashboard', path: '/admin' },
-        { icon: Users, label: 'Utilisateurs', id: 'users', path: '/admin/users' },
+        { icon: Users, label: 'Utilisateurs (Tous)', id: 'users', path: '/admin/users' },
+        { icon: User, label: 'Clients Uniquement', id: 'clients', path: '/admin/clients' },
         { icon: Building2, label: 'Vendeurs', id: 'vendors', path: '/admin/vendors' },
         { icon: Store, label: 'Boutiques', id: 'shops', path: '/admin/shops' },
         { icon: Package, label: 'Produits', id: 'products', path: '/admin/products' },
