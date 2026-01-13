@@ -43,7 +43,7 @@ const Catalogue = () => {
       console.log('Fetching products...');
 
       // Requête simple et directe
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select(`
           *,
@@ -51,11 +51,21 @@ const Catalogue = () => {
             shop_name,
             is_verified,
             city
+          ),
+          category:categories (
+            name
           )
         `)
-        .eq('is_active', true)
+        .eq('is_active', true);
+
+      // Filtre de recherche serveur
+      if (searchQuery) {
+        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) {
         console.error('Products fetch error:', error);
@@ -85,7 +95,10 @@ const Catalogue = () => {
         });
       }
 
-      return validProducts;
+      return (validProducts || []).map(p => ({
+        ...p,
+        category_name: p.category?.name || p.category_name // Fallback if name is in the object
+      }));
     },
     staleTime: 1000 * 60 * 5, // 5 minutes cache
     gcTime: 1000 * 60 * 30, // 30 minutes in memory
@@ -169,7 +182,24 @@ const Catalogue = () => {
       });
     }
 
-    // 2. Filtrer par prix
+    // 2. Filtrer par ville
+    if (selectedCities.length > 0) {
+      result = result.filter(product =>
+        product.vendor?.city && selectedCities.includes(product.vendor.city)
+      );
+    }
+
+    // 3. Filtrer par recherche (nom ou description)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(product =>
+        product.name.toLowerCase().includes(query) ||
+        (product.description && product.description.toLowerCase().includes(query)) ||
+        (product.category_name && product.category_name.toLowerCase().includes(query))
+      );
+    }
+
+    // 4. Filtrer par prix
     if (priceRange) {
       result = result.filter(product => {
         const price = product.price;
@@ -191,7 +221,7 @@ const Catalogue = () => {
       });
     }
 
-    // 3. Trier les produits
+    // 5. Trier les produits
     switch (sortBy) {
       case 'price-asc':
         result.sort((a, b) => a.price - b.price);
@@ -205,7 +235,7 @@ const Catalogue = () => {
     }
 
     return result;
-  }, [products, selectedCategory, priceRange, sortBy]);
+  }, [products, selectedCategory, selectedCities, searchQuery, priceRange, sortBy]);
 
   const handleCategoryChange = (slug: string) => {
     if (slug === selectedCategory) searchParams.delete('category');
@@ -415,7 +445,10 @@ const Catalogue = () => {
                   </div>
                   <h3 className="font-bold text-2xl mb-2">Aucun résultat</h3>
                   <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
-                    Nous n'avons trouvé aucun produit correspondant à vos filtres actuels. Essayez d'élargir votre recherche.
+                    {searchQuery
+                      ? `Nous n'avons trouvé aucun produit correspondant à "${searchQuery}".`
+                      : "Nous n'avons trouvé aucun produit correspondant à vos filtres actuels."}
+                    {" "}Essayez d'élargir votre recherche.
                   </p>
                   <Button size="lg" className="rounded-xl px-10 font-bold" onClick={clearFilters}>
                     Réinitialiser tout

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Search, ShoppingCart, Menu, X, User, LogOut, Store, Package, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import yaridLogo from '@/assets/yarid-logo.jpg';
 import { supabase } from '@/integrations/supabase/client';
+import { formatPrice } from '@/lib/demo-data';
 
 interface HeaderProps {
   cartItemCount?: number;
@@ -13,9 +14,53 @@ interface HeaderProps {
 
 const Header = ({ cartItemCount = 0 }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [suggestions, setSuggestions] = useState<{ products: any[], vendors: any[] }>({ products: [], vendors: [] });
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
+
+  // Fetch suggestions
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (searchQuery.length < 2) {
+        setSuggestions({ products: [], vendors: [] });
+        return;
+      }
+
+      const [{ data: products }, { data: vendors }] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, price, images, vendor:vendors(shop_name)')
+          .ilike('name', `%${searchQuery}%`)
+          .eq('is_active', true)
+          .limit(4),
+        supabase
+          .from('vendors')
+          .select('id, shop_name, logo_url, city')
+          .ilike('shop_name', `%${searchQuery}%`)
+          .eq('is_active', true)
+          .limit(2)
+      ]);
+
+      setSuggestions({
+        products: products || [],
+        vendors: vendors || []
+      });
+    };
+
+    const timeoutId = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Update search query state when URL changes
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     // Check current session
@@ -36,6 +81,16 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
     navigate('/');
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowSuggestions(false);
+    if (searchQuery.trim()) {
+      navigate(`/catalogue?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/catalogue');
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full bg-card shadow-soft">
       {/* Main header */}
@@ -51,18 +106,105 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
           </Link>
 
           {/* Search bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-xl">
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl relative">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Rechercher un produit..."
+                placeholder="Rechercher un produit, une marque..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 h-11 w-full bg-muted/50 border-0 focus-visible:ring-primary"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                className="pl-10 pr-4 h-11 w-full bg-muted/50 border-0 focus-visible:ring-primary rounded-xl"
               />
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && (searchQuery.length >= 2) && (suggestions.products.length > 0 || suggestions.vendors.length > 0) && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* Products Section */}
+                  {suggestions.products.length > 0 && (
+                    <div className="p-2">
+                      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                        <span>Produits</span>
+                        <Package className="w-3 h-3" />
+                      </div>
+                      <div className="space-y-1">
+                        {suggestions.products.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              navigate(`/product/${p.id}`);
+                              setShowSuggestions(false);
+                            }}
+                            className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors text-left group"
+                          >
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                              <img src={p.images?.[0]} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-800 truncate">{p.name}</p>
+                              <p className="text-[10px] font-medium text-slate-500 truncate">{p.vendor?.shop_name || 'Vendeur Yarid'}</p>
+                            </div>
+                            <div className="text-sm font-black text-primary">
+                              {formatPrice(p.price)}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vendors Section */}
+                  {suggestions.vendors.length > 0 && (
+                    <div className="p-2 bg-slate-50/50 border-t border-slate-100">
+                      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                        <span>Boutiques</span>
+                        <Store className="w-3 h-3" />
+                      </div>
+                      <div className="space-y-1">
+                        {suggestions.vendors.map((v) => (
+                          <button
+                            key={v.id}
+                            onClick={() => {
+                              navigate(`/catalogue?q=${encodeURIComponent(v.shop_name)}`);
+                              setShowSuggestions(false);
+                            }}
+                            className="w-full flex items-center gap-3 p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-left border border-transparent hover:border-slate-100"
+                          >
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                              {v.logo_url ? (
+                                <img src={v.logo_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <Store className="w-5 h-5 text-slate-300" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-800 truncate">{v.shop_name}</p>
+                              <p className="text-[10px] font-medium text-slate-500 truncate">{v.city || 'Cameroun'}</p>
+                            </div>
+                            <TrendingUp className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      handleSearch({ preventDefault: () => { } } as any);
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full p-3 text-center text-xs font-bold text-primary hover:bg-primary/5 transition-colors border-t border-slate-100"
+                  >
+                    Voir tous les résultats pour "{searchQuery}"
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
+          </form>
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
@@ -121,7 +263,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
         </div>
 
         {/* Search bar - Mobile */}
-        <div className="md:hidden mt-3">
+        <form onSubmit={handleSearch} className="md:hidden mt-3">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -132,7 +274,7 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               className="pl-10 pr-4 h-10 w-full bg-muted/50 border-0"
             />
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Mobile menu */}
