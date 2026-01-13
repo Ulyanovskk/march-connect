@@ -69,7 +69,7 @@ const AdminShops = () => {
         try {
             setLoading(true);
 
-            // Fetch all entries from vendors table (shops)
+            // 1. Fetch all shops
             const { data: shopsData, error: shopsError } = await supabase
                 .from('vendors')
                 .select('*')
@@ -77,15 +77,34 @@ const AdminShops = () => {
 
             if (shopsError) throw shopsError;
 
-            // Fetch profiles to know the owners
-            const { data: profilesData } = await supabase
-                .from('profiles')
-                .select('id, full_name, avatar_url, email');
+            // 2. Extract unique owner IDs
+            const ownerIds = Array.from(new Set((shopsData || []).map(s => s.user_id)));
 
-            const mergedShops = shopsData?.map(shop => ({
-                ...shop,
-                owner: profilesData?.find(p => p.id === shop.user_id) || null
-            })) || [];
+            if (ownerIds.length === 0) {
+                setShops([]);
+                return;
+            }
+
+            // 3. Fetch profiles for these owners
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', ownerIds);
+
+            if (profilesError) throw profilesError;
+
+            // 4. Merge data
+            const mergedShops = (shopsData || []).map(shop => {
+                const ownerProfile = profilesData?.find(p => p.id === shop.user_id);
+
+                return {
+                    ...shop,
+                    owner: ownerProfile || {
+                        full_name: shop.shop_name || 'Propriétaire inconnu',
+                        avatar_url: null
+                    }
+                };
+            });
 
             setShops(mergedShops);
         } catch (error: any) {
@@ -200,7 +219,7 @@ const AdminShops = () => {
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="font-bold">Boutique</TableHead>
-                                <TableHead className="font-bold">Slug / Lien</TableHead>
+                                <TableHead className="font-bold">Lien Publique</TableHead>
                                 <TableHead className="font-bold">Propriétaire</TableHead>
                                 <TableHead className="font-bold">Ville</TableHead>
                                 <TableHead className="font-bold">Statut</TableHead>
@@ -238,12 +257,12 @@ const AdminShops = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <code className="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold text-slate-600">/{shop.slug}</code>
-                                                <Link to={`/boutique/${shop.slug || shop.id}`} target="_blank" className="p-1.5 hover:bg-white rounded-lg transition-colors text-primary shadow-sm border border-slate-100">
-                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                            <Button variant="outline" size="sm" className="rounded-lg gap-2 font-bold text-xs h-8 border-slate-200 hover:bg-primary hover:text-white hover:border-primary transition-all group" asChild>
+                                                <Link to={`/boutique/${shop.slug || shop.id}`} target="_blank">
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    Voir boutique
                                                 </Link>
-                                            </div>
+                                            </Button>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2 text-sm font-medium text-slate-600">

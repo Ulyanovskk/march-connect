@@ -17,7 +17,8 @@ import {
     SearchX,
     FileEdit,
     Trash2,
-    FileText
+    FileText,
+    User
 } from 'lucide-react';
 import {
     Table,
@@ -74,6 +75,8 @@ const AdminProducts = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
+
+            // 1. Fetch all products
             const { data: productsData, error: productsError } = await supabase
                 .from('products')
                 .select('*')
@@ -81,26 +84,48 @@ const AdminProducts = () => {
 
             if (productsError) throw productsError;
 
-            const [vendorsRes, profilesRes] = await Promise.all([
-                supabase.from('vendors').select('id, shop_name, description'),
-                supabase.from('profiles').select('id, full_name, email')
-            ]);
+            // 2. Extract unique vendor IDs
+            const vendorIds = Array.from(new Set((productsData || []).map(p => p.vendor_id)));
 
-            if (vendorsRes.error) console.warn("Error fetching vendors:", vendorsRes.error);
+            if (vendorIds.length === 0) {
+                setProducts([]);
+                return;
+            }
 
-            const mergedProducts = productsData?.map(product => {
-                const vendor = vendorsRes.data?.find(v => v.id === product.vendor_id);
-                const profile = profilesRes.data?.find(p => p.id === product.vendor_id);
+            // 3. Fetch unique vendors
+            const { data: vendorsData } = await supabase
+                .from('vendors')
+                .select('id, shop_name, description, user_id')
+                .in('id', vendorIds);
+
+            // 4. Extract unique owner (user) IDs from vendors
+            const ownerIds = Array.from(new Set((vendorsData || []).map(v => v.user_id)));
+
+            // 5. Fetch profiles for owners
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', ownerIds);
+
+            // 6. Merge everything
+            const mergedProducts = (productsData || []).map(product => {
+                const vendor = vendorsData?.find(v => v.id === product.vendor_id);
+                const profile = profilesData?.find(p => p.id === vendor?.user_id);
 
                 return {
                     ...product,
-                    vendors: vendor ? { ...vendor, shop_description: vendor.description } : (profile ? { shop_name: profile.full_name, shop_description: `Profil Particulier (${profile.email})` } : null)
+                    vendors: {
+                        shop_name: vendor?.shop_name || 'Boutique Inconnue',
+                        shop_description: vendor?.description || 'Aucune description',
+                        owner_name: profile?.full_name || vendor?.shop_name || 'Gérant Inconnu'
+                    }
                 };
-            }) || [];
+            });
 
             setProducts(mergedProducts);
         } catch (error: any) {
             toast.error("Erreur chargement produits: " + error.message);
+            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -179,7 +204,8 @@ const AdminProducts = () => {
 
     const filteredProducts = products.filter(p => {
         const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.vendors?.shop_name?.toLowerCase().includes(searchTerm.toLowerCase());
+            p.vendors?.shop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.vendors?.owner_name?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
         return matchesSearch && matchesCategory;
     });
@@ -264,6 +290,7 @@ const AdminProducts = () => {
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="font-bold text-slate-800">Produit</TableHead>
                                 <TableHead className="font-bold text-slate-800">Boutique</TableHead>
+                                <TableHead className="font-bold text-slate-800">Vendeur</TableHead>
                                 <TableHead className="font-bold text-slate-800">Prix & Stock</TableHead>
                                 <TableHead className="font-bold text-slate-800">Date</TableHead>
                                 <TableHead className="font-bold text-slate-800">Statut</TableHead>
@@ -274,7 +301,7 @@ const AdminProducts = () => {
                             {loading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i} className="animate-pulse">
-                                        <TableCell colSpan={6}><div className="h-16 bg-slate-50/20 m-2 rounded-xl"></div></TableCell>
+                                        <TableCell colSpan={7}><div className="h-16 bg-slate-50/20 m-2 rounded-xl"></div></TableCell>
                                     </TableRow>
                                 ))
                             ) : filteredProducts.length > 0 ? (
@@ -311,6 +338,12 @@ const AdminProducts = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <User className="w-3.5 h-3.5 text-slate-400" />
+                                                <span className="text-xs font-bold text-slate-600">{product.vendors?.owner_name || 'Inconnu'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
                                             <p className="font-black text-slate-800 text-sm leading-none mb-1">{formatPrice(product.price)}</p>
                                             <div className="flex items-center gap-1.5">
                                                 <div className={`w-1.5 h-1.5 rounded-full ${product.stock > 10 ? 'bg-emerald-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
@@ -337,7 +370,7 @@ const AdminProducts = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-64 text-center">
+                                    <TableCell colSpan={7} className="h-64 text-center">
                                         <div className="flex flex-col items-center justify-center gap-3">
                                             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center"><SearchX className="w-8 h-8 text-slate-200" /></div>
                                             <p className="text-slate-400 font-bold">Aucun produit trouvé</p>
