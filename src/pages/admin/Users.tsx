@@ -95,22 +95,30 @@ const AdminUsers = () => {
             if (profilesError) throw profilesError;
 
             // Fetch all roles
-            const { data: rolesData, error: rolesError } = await supabase
+            const { data: rolesData } = await supabase
                 .from('user_roles')
                 .select('*');
 
-            if (rolesError) {
-                console.warn("Could not fetch user roles, continuing with profiles only:", rolesError);
-            }
+            // Fetch all shops to identify vendors without explicit role
+            const { data: shopsData } = await supabase
+                .from('vendors')
+                .select('user_id');
 
-            // Merge roles into profiles
-            const mergedUsers = profilesData?.map(profile => {
+            // Merge roles and shop status into profiles
+            const mergedUsers = (profilesData || []).map(profile => {
                 const userRoles = rolesData?.filter(role => role.user_id === profile.id) || [];
+                const hasShop = shopsData?.some(shop => shop.user_id === profile.id);
+
+                // Add virtual vendor role if they have a shop but no explicit role
+                if (hasShop && !userRoles.some(r => r.role === 'vendor')) {
+                    userRoles.push({ role: 'vendor' } as any);
+                }
+
                 return {
                     ...profile,
                     user_roles: userRoles
                 };
-            }) || [];
+            });
 
             setUsers(mergedUsers);
         } catch (error: any) {
@@ -269,8 +277,8 @@ const AdminUsers = () => {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Gestion des Clients</h1>
-                        <p className="text-slate-500 font-medium text-sm">Gérez les comptes clients et surveillez leur activité</p>
+                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Gestion des Utilisateurs</h1>
+                        <p className="text-slate-500 font-medium text-sm">Gérez les comptes clients, vendeurs et administrateurs</p>
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" className="rounded-xl font-bold border-slate-200">Export CSV</Button>
@@ -366,9 +374,16 @@ const AdminUsers = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-none capitalize font-bold text-[10px] px-2">
-                                                {user.user_roles?.[0]?.role || 'client'}
-                                            </Badge>
+                                            {(() => {
+                                                const roles = user.user_roles?.map((r: any) => r.role) || [];
+                                                if (roles.includes('admin')) {
+                                                    return <Badge className="bg-indigo-50 text-indigo-600 border-none font-bold text-[10px] px-2">Administrateur</Badge>;
+                                                }
+                                                if (roles.includes('vendor')) {
+                                                    return <Badge className="bg-orange-50 text-orange-600 border-none font-bold text-[10px] px-2">Vendeur Pro</Badge>;
+                                                }
+                                                return <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-none capitalize font-bold text-[10px] px-2">Client</Badge>;
+                                            })()}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
