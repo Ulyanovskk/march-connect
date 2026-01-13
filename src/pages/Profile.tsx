@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
     User, Store, Mail, ShieldCheck, Save, Loader2, Calendar,
     LogOut, Settings, Bell, CreditCard, ShoppingBag,
-    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2, QrCode, Image as ImageIcon
+    ChevronRight, MapPin, Camera, Star, AlertTriangle, X, Trash2, QrCode, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
@@ -34,7 +34,10 @@ const Profile = () => {
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState('personal');
+    const [activeTab, setActiveTab] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('tab') || 'personal';
+    });
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any>(null);
 
     useEffect(() => {
@@ -54,59 +57,86 @@ const Profile = () => {
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
-                .single();
+                .maybeSingle();
 
             if (profileError) throw profileError;
 
-            // Fetch Role
-            const { data: roleData } = await supabase
+            // If profile doesn't exist yet, we'll use a partial object with the user ID
+            const activeProfile = profileData || { id: session.user.id, full_name: session.user.user_metadata?.full_name || '' };
+
+            // Fetch Roles
+            const { data: rolesData } = await supabase
                 .from('user_roles')
                 .select('role')
+                .eq('user_id', session.user.id);
+
+            let roles = rolesData?.map(r => r.role) || [];
+
+            // Fallback: Check if user exists in vendors table even if roles are missing
+            const { data: vendorCheck } = await supabase
+                .from('vendors')
+                .select('id, shop_name, slug, description, logo_url, cover_image_url')
                 .eq('user_id', session.user.id)
-                .single();
+                .maybeSingle();
 
-            let mergedProfile = { ...profileData, role: roleData?.role || 'client' };
+            if (vendorCheck && !roles.includes('vendor')) {
+                roles.push('vendor');
+            }
 
-            // Fetch Vendor data if applicable
-            if (mergedProfile.role === 'vendor') {
-                const { data: vendorData } = await supabase
-                    .from('vendors')
-                    .select('*')
-                    .eq('user_id', session.user.id)
-                    .single();
+            // Fallback 2: Check session metadata
+            const metadataRole = session.user.user_metadata?.role;
+            if (metadataRole === 'vendor' && !roles.includes('vendor')) {
+                roles.push('vendor');
+            }
 
-                if (vendorData) {
-                    mergedProfile = {
-                        ...mergedProfile,
-                        shop_name: vendorData.shop_name,
-                        description: vendorData.description,
-                        logo_url: vendorData.logo_url,
-                        cover_image_url: vendorData.cover_image_url
-                    };
-                }
+            if (roles.length === 0) roles = ['client'];
+
+            const primaryRole = roles.includes('admin') ? 'admin' : (roles.includes('vendor') ? 'vendor' : 'client');
+            console.log('Detected roles:', roles, 'Primary:', primaryRole);
+
+            let mergedProfile = { ...activeProfile, role: primaryRole, roles: roles };
+
+            // If we have vendor data (from fallback or separate fetch), merge it
+            if (vendorCheck) {
+                mergedProfile = {
+                    ...mergedProfile,
+                    shop_id: vendorCheck.id,
+                    slug: vendorCheck.slug,
+                    shop_name: vendorCheck.shop_name,
+                    description: vendorCheck.description,
+                    logo_url: vendorCheck.logo_url,
+                    cover_image_url: vendorCheck.cover_image_url
+                };
             }
 
             setProfile(mergedProfile);
 
             // Fetch Client Orders
-            const { data: ordersData, error: ordersError } = await (supabase as any)
-                .from('orders')
-                .select(`
-                    *,
-                    order_items (
+            try {
+                const { data: ordersData, error: ordersError } = await (supabase as any)
+                    .from('orders')
+                    .select(`
                         *,
-                        products (*)
-                    )
-                `)
-                .eq('user_id', session.user.id)
-                .order('created_at', { ascending: false });
+                        order_items (
+                            *,
+                            products (*)
+                        )
+                    `)
+                    .eq('user_id', session.user.id)
+                    .order('created_at', { ascending: false });
 
-            if (ordersError) throw ordersError;
-            setOrders(ordersData || []);
+                if (ordersError) {
+                    console.error('Orders fetch error:', ordersError);
+                } else {
+                    setOrders(ordersData || []);
+                }
+            } catch (err) {
+                console.error('Detailed orders fetch error:', err);
+            }
 
         } catch (error: any) {
-            console.error('Error fetching data:', error);
-            toast.error('Erreur lors du chargement des données');
+            console.error('CRITICAL: Error fetching profile data:', error);
+            toast.error(`Erreur de chargement: ${error.message || 'Problème de connexion'}`);
         } finally {
             setIsLoading(false);
         }
@@ -116,6 +146,12 @@ const Profile = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error("Non authentifié");
+
+            const userId = session.user.id;
+
+            // 1. Update Profile
             const { error: profileErr } = await supabase
                 .from('profiles')
                 .update({
@@ -123,11 +159,14 @@ const Profile = () => {
                     city: profile.city,
                     avatar_url: profile.avatar_url,
                 })
-                .eq('id', profile.id);
+                .eq('id', userId);
 
             if (profileErr) throw profileErr;
 
-            if (profile.role === 'vendor') {
+            // 2. Update Vendor info if applicable
+            const isVendorUser = profile.role === 'vendor' || profile.roles?.includes('vendor');
+
+            if (isVendorUser) {
                 const { error: vendorErr } = await supabase
                     .from('vendors')
                     .update({
@@ -137,12 +176,17 @@ const Profile = () => {
                         logo_url: profile.logo_url,
                         cover_image_url: profile.cover_image_url
                     })
-                    .eq('user_id', profile.id);
+                    .eq('user_id', userId);
 
-                if (vendorErr) throw vendorErr;
+                if (vendorErr) {
+                    console.error('Vendor update error:', vendorErr);
+                    throw vendorErr;
+                }
             }
 
-            toast.success('Profil mis à jour avec succès');
+            toast.success('Profil et boutique mis à jour !');
+            // Refresh local state to ensure consistency
+            fetchProfileAndOrders();
         } catch (error: any) {
             console.error('Update error:', error);
             toast.error('Erreur lors de la mise à jour');
@@ -259,16 +303,26 @@ const Profile = () => {
         );
     }
 
+    console.log('Profile Debug:', {
+        id: profile?.id,
+        role: profile?.role,
+        roles: profile?.roles,
+        shop_id: profile?.shop_id,
+        isVendor: profile?.role === 'vendor' || profile?.roles?.includes('vendor') || !!profile?.shop_id
+    });
+
+    const isVendor = profile?.role === 'vendor' || profile?.roles?.includes('vendor') || !!profile?.shop_id || !!profile?.slug;
+
     const menuItems = [
         { id: 'personal', label: 'Profil Personnel', icon: User, color: 'text-blue-500', bg: 'bg-blue-50' },
-        { id: 'orders', label: 'Mes Commandes', icon: ShoppingBag, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+        ...(isVendor ? [
+            { id: 'shop', label: 'Mes Boutiques', icon: Store, color: 'text-orange-500', bg: 'bg-orange-50' }
+        ] : [
+            { id: 'orders', label: 'Mes Commandes', icon: ShoppingBag, color: 'text-emerald-500', bg: 'bg-emerald-50' }
+        ]),
         { id: 'security', label: 'Sécurité', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-50' },
         { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50' },
     ];
-
-    if (profile?.role === 'vendor') {
-        menuItems.splice(1, 0, { id: 'shop', label: 'Ma Boutique', icon: Store, color: 'text-orange-500', bg: 'bg-orange-50' });
-    }
 
     return (
         <div className="min-h-screen bg-[#F8F9FC] flex flex-col">
@@ -320,7 +374,7 @@ const Profile = () => {
                                         <h2 className="text-xl font-bold tracking-tight truncate w-full max-w-[240px]">{profile?.full_name || 'Utilisateur'}</h2>
                                         <p className="text-sm text-muted-foreground truncate w-full max-w-[240px] mb-4">{profile?.email}</p>
                                         <Badge variant="secondary" className="rounded-full px-5 py-1.5 font-bold whitespace-nowrap bg-primary/10 text-primary border-none">
-                                            {profile?.role === 'vendor' ? '🏆 Vendeur Pro' : '🛍️ Client Privilège'}
+                                            {isVendor ? '🏆 Vendeur Pro' : '🛍️ Client Privilège'}
                                         </Badge>
                                     </div>
                                 </div>
@@ -426,7 +480,7 @@ const Profile = () => {
                                                 <div className="pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
                                                     <p className="text-sm text-muted-foreground italic flex items-center gap-2">
                                                         <Calendar className="w-4 h-4" />
-                                                        Membre depuis le {new Date(profile?.created_at).toLocaleDateString()}
+                                                        Membre depuis le {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
                                                     </p>
                                                     <Button
                                                         type="submit"
@@ -444,14 +498,65 @@ const Profile = () => {
                             )}
 
                             {/* Shop Tab (Vendor only) */}
-                            {activeTab === 'shop' && profile?.role === 'vendor' && (
+                            {activeTab === 'shop' && isVendor && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="mb-6">
-                                        <h1 className="text-2xl font-black">Mon Espace Boutique</h1>
-                                        <p className="text-muted-foreground font-medium">Configurez l'apparence et l'identité de votre commerce</p>
+                                    <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <h1 className="text-2xl font-black">Mes Boutiques</h1>
+                                            <p className="text-muted-foreground font-medium">Gérez et visualisez vos vitrines commerciales</p>
+                                        </div>
+                                        <Button asChild variant="outline" className="rounded-2xl font-bold gap-2 self-start sm:self-auto shadow-sm">
+                                            <Link to={`/boutique/${profile.slug || profile.shop_id}`} target="_blank">
+                                                <ExternalLink className="w-4 h-4 text-primary" />
+                                                Voir ma boutique publique
+                                            </Link>
+                                        </Button>
                                     </div>
 
-                                    <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden">
+                                    {/* Shop Preview Card (List style) */}
+                                    <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden mb-8 bg-gradient-to-r from-orange-500/5 to-primary/5 border border-orange-500/10">
+                                        <div className="p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6">
+                                            <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white border border-orange-500/20 shadow-inner shrink-0">
+                                                {profile?.logo_url ? (
+                                                    <img src={profile.logo_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-orange-50">
+                                                        <Store className="w-8 h-8 text-orange-200" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 text-center md:text-left">
+                                                <h2 className="text-xl font-black mb-1">{profile?.shop_name || 'Ma Boutique'}</h2>
+                                                <p className="text-sm text-muted-foreground font-medium mb-4 flex items-center justify-center md:justify-start gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5" />
+                                                    {profile?.city || 'Localisation non définie'}
+                                                </p>
+                                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                                    <Button asChild size="sm" className="rounded-xl font-bold h-10 px-6">
+                                                        <Link to={`/boutique/${profile.slug || profile.shop_id}`} target="_blank">
+                                                            <ExternalLink className="w-4 h-4 mr-2" />
+                                                            Voir la boutique
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        type="button"
+                                                        className="rounded-xl font-bold h-10 px-6 border-orange-500/20 bg-white/50 text-orange-600 hover:bg-orange-600 hover:text-white transition-all shadow-sm"
+                                                        onClick={() => {
+                                                            const el = document.getElementById('boutique-details-card');
+                                                            el?.scrollIntoView({ behavior: 'smooth' });
+                                                        }}
+                                                    >
+                                                        <Settings className="w-4 h-4 mr-2" />
+                                                        Modifier les infos
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+
+                                    <Card id="boutique-details-card" className="border-none shadow-xl shadow-gray-200/40 rounded-3xl overflow-hidden">
                                         <CardHeader className="p-8 border-b bg-white">
                                             <CardTitle className="flex items-center gap-2">
                                                 <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
@@ -579,7 +684,7 @@ const Profile = () => {
                             )}
 
                             {/* Orders Tab */}
-                            {activeTab === 'orders' && (
+                            {activeTab === 'orders' && !isVendor && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                                         <div className="space-y-1">

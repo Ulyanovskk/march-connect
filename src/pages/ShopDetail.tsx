@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/ui/ProductCard';
-import { BadgeCheck, MapPin, Store, Calendar, Package, Loader2, ChevronLeft, User, Camera, Image as ImageIcon } from 'lucide-react';
+import { BadgeCheck, MapPin, Store, Calendar, Package, Loader2, ChevronLeft, User, Camera, Image as ImageIcon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
@@ -17,9 +17,25 @@ const ShopDetail = () => {
     const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setCurrentUser(session?.user ?? null);
-        });
+        const fetchUser = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const { data: roleData } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', session.user.id);
+
+                const roles = roleData?.map(r => r.role) || [];
+                setCurrentUser({
+                    ...session.user,
+                    isAdmin: roles.includes('admin'),
+                    roles: roles
+                });
+            } else {
+                setCurrentUser(null);
+            }
+        };
+        fetchUser();
     }, []);
 
     const { data: shop, isLoading: shopLoading, error: shopError } = useQuery({
@@ -67,6 +83,8 @@ const ShopDetail = () => {
         enabled: !!id
     });
 
+    const isOwner = currentUser?.id === shop?.user_id || currentUser?.isAdmin;
+
     const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
         queryKey: ['shop-products', shop?.id],
         queryFn: async () => {
@@ -84,7 +102,7 @@ const ShopDetail = () => {
 
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !shop) return;
+        if (!file || !shop || !isOwner) return;
 
         if (file.size > 2 * 1024 * 1024) {
             toast.error('L\'image est trop lourde (max 2MB)');
@@ -118,7 +136,7 @@ const ShopDetail = () => {
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !shop) return;
+        if (!file || !shop || !isOwner) return;
 
         if (file.size > 2 * 1024 * 1024) {
             toast.error('L\'image est trop lourde (max 2MB)');
@@ -152,7 +170,7 @@ const ShopDetail = () => {
 
     const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !shop) return;
+        if (!file || !shop || !isOwner) return;
 
         if (file.size > 2 * 1024 * 1024) {
             toast.error('L\'image est trop lourde (max 2MB)');
@@ -229,14 +247,25 @@ const ShopDetail = () => {
                         </>
                     )}
 
-                    {currentUser?.id === shop.user_id && (
-                        <div
-                            onClick={() => document.getElementById('cover-upload')?.click()}
-                            className="absolute top-4 right-4 z-20 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl cursor-pointer opacity-0 group-hover/hero:opacity-100 transition-opacity flex items-center gap-2 font-bold text-xs"
-                        >
-                            <ImageIcon className="w-4 h-4" />
-                            Changer la couverture
-                            <input id="cover-upload" type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} />
+                    {isOwner && (
+                        <div className="absolute top-4 right-4 z-20 flex flex-wrap gap-2 justify-end">
+                            <div
+                                onClick={() => document.getElementById('cover-upload')?.click()}
+                                className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl cursor-pointer opacity-0 group-hover/hero:opacity-100 transition-opacity flex items-center gap-2 font-bold text-xs"
+                            >
+                                <ImageIcon className="w-4 h-4" />
+                                Changer la couverture
+                                <input id="cover-upload" type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} />
+                            </div>
+
+                            {currentUser?.id === shop?.user_id && (
+                                <Button asChild variant="outline" className="bg-white/10 hover:bg-white/20 backdrop-blur-md border-white/10 text-white rounded-xl h-auto py-2 px-4 opacity-0 group-hover/hero:opacity-100 transition-opacity font-bold text-xs gap-2">
+                                    <Link to="/profile?tab=shop">
+                                        <Settings className="w-4 h-4" />
+                                        Modifier les infos
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
                     )}
 
@@ -261,7 +290,7 @@ const ShopDetail = () => {
                                         <Store className="w-16 h-16 text-slate-300" />
                                     )}
 
-                                    {currentUser?.id === shop.user_id && (
+                                    {isOwner && (
                                         <div
                                             onClick={() => document.getElementById('logo-upload')?.click()}
                                             className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
@@ -296,7 +325,7 @@ const ShopDetail = () => {
                                                 <User className="w-4 h-4 text-primary" />
                                             )}
 
-                                            {currentUser?.id === shop.user_id && (
+                                            {isOwner && (
                                                 <div
                                                     onClick={() => document.getElementById('avatar-upload-shop')?.click()}
                                                     className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer"
@@ -307,8 +336,8 @@ const ShopDetail = () => {
                                             )}
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/40 leading-none mb-1">Gérant</p>
-                                            <p className="text-sm font-bold text-white">{shop.profiles?.full_name || 'Vendeur Yarid'}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/40 leading-none mb-1">Vendeur</p>
+                                            <p className="text-sm font-bold text-white">{shop.profiles?.full_name || shop.shop_name || 'Commerçant Yarid'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -322,11 +351,11 @@ const ShopDetail = () => {
                                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-8 text-sm font-black text-white/60">
                                     <div className="flex items-center gap-2.5 bg-white/5 px-4 py-2 rounded-xl backdrop-blur-md">
                                         <MapPin className="w-4 h-4 text-primary" />
-                                        {shop.city || 'Cameroun'}
+                                        {shop.city || 'Localisation non définie'}
                                     </div>
                                     <div className="flex items-center gap-2.5 bg-white/5 px-4 py-2 rounded-xl backdrop-blur-md">
                                         <Calendar className="w-4 h-4 text-primary" />
-                                        Depuis {new Date(shop.created_at).getFullYear()}
+                                        Depuis {shop.created_at ? new Date(shop.created_at).getFullYear() : 'nouveau'}
                                     </div>
                                     <div className="flex items-center gap-2.5 bg-white/5 px-4 py-2 rounded-xl backdrop-blur-md text-white">
                                         <Package className="w-4 h-4 text-primary font-black" />
