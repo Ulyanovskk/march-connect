@@ -116,7 +116,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     </div>
 
                     {/* Navigation Items */}
-                    <nav className="flex-1 overflow-hidden py-6 px-4 space-y-1">
+                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
                         {menuItems.map((item) => {
                             const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
                             return (
