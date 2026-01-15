@@ -17,7 +17,8 @@ import {
     Eye,
     Ban,
     Globe,
-    Wallet
+    Wallet,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -60,6 +61,7 @@ const AdminShops = () => {
     const [selectedShop, setSelectedShop] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [shopStats, setShopStats] = useState({ products: 0, orders: 0, revenue: 0 });
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchShops();
@@ -214,7 +216,8 @@ const AdminShops = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                {/* Desktop View */}
+                <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
@@ -318,6 +321,117 @@ const AdminShops = () => {
                             )}
                         </TableBody>
                     </Table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="md:hidden space-y-4">
+                    {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                <div className="h-10 bg-slate-50 rounded-xl mb-4" />
+                                <div className="h-20 bg-slate-50 rounded-xl" />
+                            </div>
+                        ))
+                    ) : filteredShops.length > 0 ? (
+                        filteredShops.map((shop) => (
+                            <div key={shop.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => setMobileExpandedId(mobileExpandedId === shop.id ? null : shop.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                                            {shop.logo_url ? (
+                                                <img src={shop.logo_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Store className="w-5 h-5 text-slate-400" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                                                {shop.shop_name}
+                                                {shop.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-emerald-500" />}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">ID: {shop.id.substring(0, 6)}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center transition-transform duration-300 ${mobileExpandedId === shop.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {mobileExpandedId === shop.id && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Propriétaire</p>
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="w-6 h-6 border border-slate-200">
+                                                        <AvatarImage src={shop.owner?.avatar_url} />
+                                                        <AvatarFallback className="text-[10px] font-bold">{shop.owner?.full_name?.charAt(0) || '?'}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-xs font-bold text-slate-700 truncate">{shop.owner?.full_name || 'Inconnu'}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Ville</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span className="text-xs font-bold text-slate-700">{shop.city || 'N/A'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <Badge variant="secondary" className={`rounded-lg h-7 px-3 ${shop.is_active ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
+                                                {shop.is_active ? 'En ligne' : 'Invisible'}
+                                            </Badge>
+                                            <Button variant="outline" size="sm" className="h-8 bg-white border-slate-200 text-xs font-bold" asChild>
+                                                <Link to={`/boutique/${shop.slug || shop.id}`} target="_blank">
+                                                    Voir boutique <ExternalLink className="w-3 h-3 ml-1.5 opacity-50" />
+                                                </Link>
+                                            </Button>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-2 pt-1">
+                                            <Button
+                                                variant="outline"
+                                                className="h-9 border-slate-200 hover:bg-slate-50 hover:text-primary text-[10px] font-bold flex flex-col gap-0.5 items-center justify-center p-0"
+                                                onClick={() => handleViewShop(shop)}
+                                            >
+                                                <Eye className="w-3.5 h-3.5 mb-0.5" />
+                                                Détails
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold flex flex-col gap-0.5 items-center justify-center p-0 ${shop.is_active ? 'text-amber-600' : 'text-emerald-600'}`}
+                                                onClick={() => toggleVisibility(shop.id, shop.is_active)}
+                                            >
+                                                <Globe className="w-3.5 h-3.5 mb-0.5" />
+                                                {shop.is_active ? 'Pause' : 'Publier'}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold flex flex-col gap-0.5 items-center justify-center p-0 ${shop.is_verified ? 'text-red-500' : 'text-emerald-600'}`}
+                                                onClick={() => handleVerifyShop(shop.id, !shop.is_verified)}
+                                            >
+                                                <BadgeCheck className="w-3.5 h-3.5 mb-0.5" />
+                                                {shop.is_verified ? 'Retirer' : 'Certifier'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                            <Store className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                            <p className="text-slate-400 font-bold text-sm">Aucune boutique trouvée</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
