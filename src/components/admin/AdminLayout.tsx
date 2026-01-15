@@ -186,6 +186,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                             <input
                                 type="text"
+                                name="global_search"
+                                id="global_search"
                                 placeholder="Rechercher client, commande, boutique..."
                                 className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                             />

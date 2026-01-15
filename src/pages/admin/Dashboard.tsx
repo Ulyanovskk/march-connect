@@ -401,7 +401,7 @@ const AdminDashboard = () => {
                                 <h3 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">Flux de Revenus</h3>
                                 <p className="text-xs md:text-sm text-slate-500 font-medium">Performance des 7 derniers jours</p>
                             </div>
-                            <select className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs md:text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20 transition-all w-full sm:w-auto">
+                            <select name="dashboard_period" id="dashboard_period" className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs md:text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20 transition-all w-full sm:w-auto">
                                 <option>7 derniers jours</option>
                                 <option>30 derniers jours</option>
                             </select>
