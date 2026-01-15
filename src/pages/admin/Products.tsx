@@ -18,7 +18,8 @@ import {
     FileEdit,
     Trash2,
     FileText,
-    User
+    User,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -67,6 +68,7 @@ const AdminProducts = () => {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchProducts();
@@ -283,8 +285,8 @@ const AdminProducts = () => {
                     </div>
                 </div>
 
-                {/* Products Table */}
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                {/* Products Table (Desktop) */}
+                <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
@@ -380,6 +382,114 @@ const AdminProducts = () => {
                             )}
                         </TableBody>
                     </Table>
+                </div>
+
+                {/* Products List (Mobile) */}
+                <div className="md:hidden space-y-4">
+                    {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-xl" />
+                                    <div className="space-y-2">
+                                        <div className="h-4 w-32 bg-slate-50 rounded" />
+                                        <div className="h-3 w-20 bg-slate-50 rounded" />
+                                    </div>
+                                </div>
+                                <div className="h-10 bg-slate-50 rounded-xl" />
+                            </div>
+                        ))
+                    ) : filteredProducts.length > 0 ? (
+                        filteredProducts.map((product) => (
+                            <div key={product.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => setMobileExpandedId(mobileExpandedId === product.id ? null : product.id)}
+                                >
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                                            {product.images?.[0] ? (
+                                                <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-5 h-5" /></div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-slate-800 text-sm leading-tight mb-1 truncate">{product.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-[9px] font-black uppercase text-slate-400 py-0 h-4 border-slate-200 shrink-0">
+                                                    {product.category || 'Général'}
+                                                </Badge>
+                                                <span className="font-black text-slate-800 text-xs">{formatPrice(product.price)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 transition-transform duration-300 ${mobileExpandedId === product.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {mobileExpandedId === product.id && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Boutique</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Store className="w-3.5 h-3.5 text-primary" />
+                                                    <span className="text-xs font-bold text-slate-600 truncate">{product.vendors?.shop_name || 'Inconnue'}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Stock</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${product.stock > 10 ? 'bg-emerald-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
+                                                    <span className="text-xs font-medium text-slate-600">{product.stock} unités</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <Badge className={`${product.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'} border-none font-black text-[9px] px-2`}>
+                                                {product.is_active ? 'EN LIGNE' : 'HORS LIGNE'}
+                                            </Badge>
+                                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                                                <Clock className="w-3 h-3" />
+                                                {format(new Date(product.created_at), 'dd/MM/yy', { locale: fr })}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 pt-1">
+                                            <Button
+                                                variant="outline"
+                                                className="h-9 border-slate-200 hover:bg-slate-50 hover:text-primary text-[10px] font-bold"
+                                                onClick={() => handleViewProduct(product)}
+                                            >
+                                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                                Détails
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold ${product.is_active ? 'text-amber-600' : 'text-emerald-600'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleToggleActive(product.id, product.is_active);
+                                                }}
+                                            >
+                                                {product.is_active ? <Ban className="w-3.5 h-3.5 mr-1.5" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
+                                                {product.is_active ? 'Désactiver' : 'Activer'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                            <SearchX className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                            <p className="text-slate-400 font-bold text-sm">Aucun produit trouvé</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

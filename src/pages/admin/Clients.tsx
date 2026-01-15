@@ -12,7 +12,8 @@ import {
     Calendar,
     ShoppingCart,
     SearchX,
-    User
+    User,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -56,6 +57,7 @@ const AdminClients = () => {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [userStats, setUserStats] = useState({ ordersCount: 0, totalSpent: 0 });
     const [filter, setFilter] = useState<'all' | 'active' | 'blocked'>('all');
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchClients();
@@ -200,7 +202,8 @@ const AdminClients = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                {/* Clients Table (Desktop) */}
+                <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow>
@@ -220,7 +223,7 @@ const AdminClients = () => {
                                 ))
                             ) : filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => (
-                                    <TableRow key={user.id} className="hover:bg-slate-50/50 cursor-pointer" onClick={() => handleViewUser(user)}>
+                                    <TableRow key={user.id} className="hover:bg-slate-50/50 cursor-pointer transition-colors" onClick={() => handleViewUser(user)}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="w-10 h-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
@@ -258,7 +261,7 @@ const AdminClients = () => {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg">
                                                 <Eye className="w-4 h-4 text-slate-400" />
                                             </Button>
                                         </TableCell>
@@ -274,6 +277,86 @@ const AdminClients = () => {
                             )}
                         </TableBody>
                     </Table>
+                </div>
+
+                {/* Clients List (Mobile) */}
+                <div className="md:hidden space-y-4">
+                    {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-full" />
+                                    <div className="space-y-2">
+                                        <div className="h-4 w-32 bg-slate-50 rounded" />
+                                        <div className="h-3 w-20 bg-slate-50 rounded" />
+                                    </div>
+                                </div>
+                                <div className="h-10 bg-slate-50 rounded-xl" />
+                            </div>
+                        ))
+                    ) : filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
+                            <div key={user.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => setMobileExpandedId(mobileExpandedId === user.id ? null : user.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-10 h-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
+                                            <AvatarFallback className="bg-primary/5 text-primary text-xs font-black uppercase">
+                                                {user.full_name?.substring(0, 2) || 'CL'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-bold text-slate-800 leading-none mb-1">{user.full_name || 'Sans nom'}</p>
+                                            <div className="flex gap-2">
+                                                <Badge className="bg-blue-50 text-blue-600 border-none text-[9px] px-2 h-4">Acheteur</Badge>
+                                                {user.is_blocked ? (
+                                                    <Badge className="bg-red-50 text-red-600 border-none font-bold text-[9px] px-1.5 h-4">Bloqué</Badge>
+                                                ) : (
+                                                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[9px] px-1.5 h-4">Actif</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 transition-transform duration-300 ${mobileExpandedId === user.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {mobileExpandedId === user.id && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                <Phone className="w-3 h-3 text-slate-400" /> {user.phone || 'Non renseigné'}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                <Mail className="w-3 h-3 text-slate-400" /> <span className="truncate">{user.email || 'Pas d\'email'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-600 pt-1">
+                                                <Calendar className="w-3 h-3 text-slate-400" />
+                                                Inscrit le {user.created_at ? format(new Date(user.created_at), 'dd MMM yyyy', { locale: fr }) : 'N/A'}
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            className="w-full h-10 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs"
+                                            onClick={() => handleViewUser(user)}
+                                        >
+                                            <Eye className="w-3.5 h-3.5 mr-2" />
+                                            Voir Détails Complets
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                            <SearchX className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                            <p className="text-slate-400 font-medium">Aucun client trouvé</p>
+                        </div>
+                    )}
                 </div>
 
                 {selectedUser && (

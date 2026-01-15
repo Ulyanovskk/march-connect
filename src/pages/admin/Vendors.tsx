@@ -13,7 +13,8 @@ import {
     AlertCircle,
     Eye,
     ChevronRight,
-    SearchX
+    SearchX,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -52,6 +53,7 @@ const AdminVendors = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedVendor, setSelectedVendor] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchVendors();
@@ -162,7 +164,8 @@ const AdminVendors = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                {/* Vendors Table (Desktop) */}
+                <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
@@ -268,6 +271,115 @@ const AdminVendors = () => {
                             )}
                         </TableBody>
                     </Table>
+                </div>
+
+                {/* Vendors List (Mobile) */}
+                <div className="md:hidden space-y-4">
+                    {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-full" />
+                                    <div className="space-y-2">
+                                        <div className="h-4 w-32 bg-slate-50 rounded" />
+                                        <div className="h-3 w-20 bg-slate-50 rounded" />
+                                    </div>
+                                </div>
+                                <div className="h-10 bg-slate-50 rounded-xl" />
+                            </div>
+                        ))
+                    ) : filteredVendors.length > 0 ? (
+                        filteredVendors.map((vendor) => (
+                            <div key={vendor.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => setMobileExpandedId(mobileExpandedId === vendor.id ? null : vendor.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-10 h-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
+                                            <AvatarImage src={vendor.avatar_url} />
+                                            <AvatarFallback className="bg-indigo-50 text-indigo-600 text-xs font-black uppercase">
+                                                {vendor.full_name?.substring(0, 2) || 'VN'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-slate-800 leading-none">{vendor.full_name || 'Vendeur sans nom'}</p>
+                                                {vendor.is_verified && <ShieldCheck className="w-3 h-3 text-emerald-500" />}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ID: {vendor.id.substring(0, 8)}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 transition-transform duration-300 ${mobileExpandedId === vendor.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {mobileExpandedId === vendor.id && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Boutiques</p>
+                                                <Badge className="bg-indigo-50 text-indigo-600 border-none font-black text-xs px-2.5 py-1 rounded-lg">
+                                                    {vendor.shops_count} boutique(s)
+                                                </Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Statut</p>
+                                                {vendor.is_verified ? (
+                                                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1.5">
+                                                        <ShieldCheck className="w-3 h-3" />
+                                                        Vérifié
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge className="bg-amber-50 text-amber-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1.5">
+                                                        <AlertCircle className="w-3 h-3" />
+                                                        En attente
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                <Mail className="w-3 h-3 text-slate-400" /> <span className="truncate">{vendor.email || 'Pas d\'email'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                <Phone className="w-3 h-3 text-slate-400" /> {vendor.phone || 'Non renseigné'}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 pt-1">
+                                            <Button
+                                                className="h-9 bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-bold"
+                                                onClick={() => {
+                                                    setSelectedVendor(vendor);
+                                                    setIsDetailsOpen(true);
+                                                }}
+                                            >
+                                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                                Détails
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold"
+                                                onClick={() => handleAction(vendor.id, 'verification')}
+                                            >
+                                                <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
+                                                Vérifier
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                            <SearchX className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                            <p className="text-slate-400 font-medium">Aucun gérant trouvé</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

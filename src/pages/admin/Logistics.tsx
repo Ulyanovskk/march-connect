@@ -13,7 +13,8 @@ import {
     Navigation,
     ExternalLink,
     MoreVertical,
-    Plus
+    Plus,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -41,6 +42,7 @@ const AdminLogistics = () => {
     const [deliveries, setDeliveries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchDeliveries();
@@ -183,7 +185,8 @@ const AdminLogistics = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                    {/* Delivery Management Table (Desktop) */}
+                    <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                         <Table>
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
@@ -298,6 +301,99 @@ const AdminLogistics = () => {
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    {/* Delivery List (Mobile) */}
+                    <div className="md:hidden space-y-4">
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                    <div className="flex justify-between mb-4">
+                                        <div className="h-4 w-24 bg-slate-50 rounded" />
+                                        <div className="h-4 w-16 bg-slate-50 rounded" />
+                                    </div>
+                                    <div className="h-10 bg-slate-50 rounded-xl" />
+                                </div>
+                            ))
+                        ) : filteredDeliveries.length > 0 ? (
+                            filteredDeliveries.map((delivery) => (
+                                <div key={delivery.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                    <div
+                                        className="flex items-center justify-between cursor-pointer"
+                                        onClick={() => setMobileExpandedId(mobileExpandedId === delivery.id ? null : delivery.id)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center text-primary border border-primary/10">
+                                                <Truck className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">
+                                                    {delivery.order_number || `TRK-${delivery.id.substring(0, 8).toUpperCase()}`}
+                                                </p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <Badge className={`
+                                                        ${delivery.status === 'processing' ? 'bg-amber-50 text-amber-600' : ''}
+                                                        ${delivery.status === 'shipped' ? 'bg-indigo-50 text-indigo-600' : ''}
+                                                        ${delivery.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' : ''}
+                                                        ${delivery.status === 'cancelled' ? 'bg-red-50 text-red-600' : ''}
+                                                        border-none font-black text-[9px] px-1.5 py-0 h-4
+                                                    `}>
+                                                        {delivery.status.toUpperCase()}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 transition-transform duration-300 ${mobileExpandedId === delivery.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                                        </div>
+                                    </div>
+
+                                    {/* Expanded Details */}
+                                    {mobileExpandedId === delivery.id && (
+                                        <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="grid grid-cols-1 gap-2">
+                                                <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
+                                                    <MapPin className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                                                    <span className="text-xs font-bold text-slate-600 truncate">
+                                                        {delivery.addresses ?
+                                                            `${delivery.addresses.city}, ${delivery.addresses.address_line1 || ''}`
+                                                            : 'Adresse non définie'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
+                                                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                    <span className="text-xs font-bold text-slate-600">
+                                                        {format(new Date(delivery.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold"
+                                                    onClick={() => handleTrackGPS(delivery.id, delivery.order_number)}
+                                                >
+                                                    <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                                                    Suivi GPS
+                                                </Button>
+                                                <Button
+                                                    className="h-9 bg-primary hover:bg-primary/90 text-white text-[10px] font-bold"
+                                                    onClick={() => handleUpdateStatus(delivery.id, 'delivered')}
+                                                >
+                                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                    Valider
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                                <p className="text-slate-400 font-bold text-sm">Aucune expédition en cours</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

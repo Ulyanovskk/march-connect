@@ -12,7 +12,8 @@ import {
     Calendar,
     Shield,
     ShoppingCart,
-    SearchX
+    SearchX,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -72,6 +73,7 @@ const AdminUsers = () => {
     const [filter, setFilter] = useState<'all' | 'active' | 'blocked'>('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [creatingAdmin, setCreatingAdmin] = useState(false);
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
     const [newAdmin, setNewAdmin] = useState({
         fullName: '',
         email: '',
@@ -334,8 +336,8 @@ const AdminUsers = () => {
                     </div>
                 </div>
 
-                {/* Users Table */}
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                {/* Users Table (Desktop) */}
+                <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
@@ -441,6 +443,131 @@ const AdminUsers = () => {
                             )}
                         </TableBody>
                     </Table>
+                </div>
+
+                {/* Users List (Mobile) */}
+                <div className="md:hidden space-y-4">
+                    {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-slate-50 rounded-full" />
+                                    <div className="space-y-2">
+                                        <div className="h-4 w-32 bg-slate-50 rounded" />
+                                        <div className="h-3 w-20 bg-slate-50 rounded" />
+                                    </div>
+                                </div>
+                                <div className="h-10 bg-slate-50 rounded-xl" />
+                            </div>
+                        ))
+                    ) : filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
+                            <div key={user.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => setMobileExpandedId(mobileExpandedId === user.id ? null : user.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-10 h-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
+                                            <AvatarFallback className="bg-primary/5 text-primary text-xs font-black uppercase">
+                                                {user.full_name?.substring(0, 2) || 'CL'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm leading-none mb-1">{user.full_name || 'Sans nom'}</p>
+                                            <div className="flex items-center gap-1.5">
+                                                {(() => {
+                                                    const roles = user.user_roles?.map((r: any) => r.role) || [];
+                                                    if (roles.includes('admin')) {
+                                                        return <Badge className="bg-indigo-50 text-indigo-600 border-none font-bold text-[9px] px-1.5 h-4">Admin</Badge>;
+                                                    }
+                                                    if (roles.includes('vendor')) {
+                                                        return <Badge className="bg-orange-50 text-orange-600 border-none font-bold text-[9px] px-1.5 h-4">Vendeur</Badge>;
+                                                    }
+                                                    return <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none capitalize font-bold text-[9px] px-1.5 h-4">Client</Badge>;
+                                                })()}
+                                                <span className="text-[10px] text-slate-400 font-medium">#{user.id.substring(0, 6)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center transition-transform duration-300 ${mobileExpandedId === user.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {mobileExpandedId === user.id && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Contact</p>
+                                                <div className="space-y-1.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600 truncate block max-w-[120px]">{user.email || 'N/A'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">{user.phone || 'N/A'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Infos</p>
+                                                <div className="space-y-1.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">{user.created_at ? format(new Date(user.created_at), 'dd MMM yyyy', { locale: fr }) : 'N/A'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            {user.is_blocked ? (
+                                                <Badge className="bg-red-50 text-red-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    Bloqué
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px] px-2 flex w-fit items-center gap-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    Actif
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 pt-1">
+                                            <Button
+                                                variant="outline"
+                                                className="h-9 border-slate-200 hover:bg-slate-50 hover:text-primary text-[10px] font-bold"
+                                                onClick={() => handleViewUser(user)}
+                                            >
+                                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                                Détails Complets
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold ${user.is_blocked ? 'text-emerald-600' : 'text-red-600'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleBlockUser(user.id, user.is_blocked || false);
+                                                }}
+                                            >
+                                                {user.is_blocked ? <UserCheck className="w-3.5 h-3.5 mr-1.5" /> : <UserX className="w-3.5 h-3.5 mr-1.5" />}
+                                                {user.is_blocked ? 'Débloquer' : 'Bloquer'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                            <SearchX className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                            <p className="text-slate-400 font-bold text-sm">Aucun utilisateur trouvé</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Create Admin Modal */}

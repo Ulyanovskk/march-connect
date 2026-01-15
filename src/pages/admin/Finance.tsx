@@ -15,7 +15,8 @@ import {
     CheckCircle2,
     TrendingUp,
     History,
-    Info
+    Info,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -43,6 +44,7 @@ const AdminFinance = () => {
         platformRevenue: 0
     });
     const [transactions, setTransactions] = useState<any[]>([]);
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchFinanceData();
@@ -231,7 +233,8 @@ const AdminFinance = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                    {/* Transactions Table (Desktop) */}
+                    <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                         <Table>
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
@@ -323,9 +326,99 @@ const AdminFinance = () => {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Transactions List (Mobile) */}
+                    <div className="md:hidden space-y-4">
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                    <div className="flex justify-between mb-4">
+                                        <div className="h-4 w-24 bg-slate-50 rounded" />
+                                        <div className="h-4 w-16 bg-slate-50 rounded" />
+                                    </div>
+                                    <div className="h-10 bg-slate-50 rounded-xl" />
+                                </div>
+                            ))
+                        ) : transactions.length > 0 ? (
+                            transactions.map((tr) => {
+                                const totalAmount = Number(tr.total) || Number(tr.total_amount) || 0;
+                                const commission = totalAmount * (tr.commissionRate || 0.1);
+                                const netSeller = totalAmount - commission;
+
+                                return (
+                                    <div key={tr.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                        <div
+                                            className="flex items-center justify-between cursor-pointer"
+                                            onClick={() => setMobileExpandedId(mobileExpandedId === tr.id ? null : tr.id)}
+                                        >
+                                            <div className="flex flex-col gap-1">
+                                                <p className="text-xs font-black text-slate-800">
+                                                    #{tr.order_number || tr.id.substring(0, 8).toUpperCase()}
+                                                </p>
+                                                <p className="text-[10px] font-bold text-slate-400">{format(new Date(tr.created_at), 'dd MMM', { locale: fr })}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-right">
+                                                    <p className="font-black text-slate-800 text-sm">{formatPrice(totalAmount)}</p>
+                                                    {tr.status === 'delivered' ? (
+                                                        <span className="text-[9px] font-black text-emerald-500 uppercase">Débloqué</span>
+                                                    ) : (tr.payment_status === 'paid' || tr.payment_status === 'completed') ? (
+                                                        <span className="text-[9px] font-black text-orange-500 uppercase">Sécurisé</span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase">Attente</span>
+                                                    )}
+                                                </div>
+                                                <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 transition-transform duration-300 ${mobileExpandedId === tr.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Details */}
+                                        {mobileExpandedId === tr.id && (
+                                            <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Boutique</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Building2 className="w-3.5 h-3.5 text-primary" />
+                                                            <span className="text-xs font-bold text-slate-600 truncate">{tr.vendors?.shop_name || 'System'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Net Vendeur</p>
+                                                        <p className="font-black text-slate-700 text-xs">{formatPrice(netSeller)}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Commission ({((tr.commissionRate || 0.1) * 100).toFixed(0)}%)</span>
+                                                        <span className="font-bold text-emerald-600 text-sm">-{formatPrice(commission)}</span>
+                                                    </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 bg-white border-slate-200 text-xs font-bold"
+                                                        onClick={() => toast.info(`Détails transaction #${tr.id.substring(0, 8)}`)}
+                                                    >
+                                                        Détails
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })
+                        ) : (
+                            <div className="py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                                <p className="text-slate-400 font-bold text-sm">Aucune transaction</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-        </AdminLayout>
+        </AdminLayout >
     );
 };
 

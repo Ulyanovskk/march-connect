@@ -17,7 +17,8 @@ import {
     ArrowRight,
     ShieldCheck,
     Ban,
-    Archive
+    Archive,
+    ChevronDown
 } from 'lucide-react';
 import {
     Table,
@@ -46,6 +47,7 @@ const AdminSupport = () => {
     const [tickets, setTickets] = useState<any[]>([]); // Mock or real if table exists
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
+    const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchSupportData();
@@ -237,7 +239,8 @@ const AdminSupport = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                    {/* Support Table (Desktop) */}
+                    <div className="hidden md:block bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
                         <Table>
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
@@ -338,6 +341,88 @@ const AdminSupport = () => {
                                 ))}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    {/* Support List (Mobile) */}
+                    <div className="md:hidden space-y-4">
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm animate-pulse">
+                                    <div className="flex justify-between mb-4">
+                                        <div className="h-4 w-24 bg-slate-50 rounded" />
+                                        <div className="h-4 w-16 bg-slate-50 rounded" />
+                                    </div>
+                                    <div className="h-10 bg-slate-50 rounded-xl" />
+                                </div>
+                            ))
+                        ) : filteredTickets.map((ticket) => (
+                            <div key={ticket.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft transition-all duration-300">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => setMobileExpandedId(mobileExpandedId === ticket.id ? null : ticket.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex flex-col gap-0.5">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter" title={ticket.id}>
+                                                #{ticket.id.substring(0, 8)}
+                                            </p>
+                                            <p className="text-sm font-bold text-slate-800 line-clamp-1">{ticket.subject}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {getPriorityBadge(ticket.priority)}
+                                                <Badge className={`${ticket.status === 'open' ? 'bg-indigo-50 text-indigo-600' :
+                                                    ticket.status === 'resolved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
+                                                    } border-none font-black text-[9px] px-1.5 py-0 h-4`}>
+                                                    {ticket.status.toUpperCase()}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 transition-transform duration-300 ${mobileExpandedId === ticket.id ? 'rotate-180 bg-slate-100' : ''}`}>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {mobileExpandedId === ticket.id && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Demandeur</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <User className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span className="text-xs font-bold text-slate-600 truncate">{ticket.user}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Date</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span className="text-xs font-bold text-slate-600">{format(new Date(ticket.date), 'dd MMM yyyy', { locale: fr })}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 pt-1">
+                                            <Button
+                                                variant="outline"
+                                                className="h-9 border-slate-200 hover:bg-slate-50 text-[10px] font-bold"
+                                                onClick={() => toast.info(`Ouverture du dossier ${ticket.id}`)}
+                                            >
+                                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                                Voir Détails
+                                            </Button>
+                                            <Button
+                                                className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold"
+                                                onClick={() => handleResolveTicket(ticket.id)}
+                                            >
+                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                Résoudre
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
