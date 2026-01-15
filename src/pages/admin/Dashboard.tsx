@@ -218,13 +218,29 @@ const AdminDashboard = () => {
                 });
 
                 // Fetch pending vendors separately to include in stats
-                const { data: pendingVendorsData } = await supabase
+                // Fix: Use two-step fetch to avoid 400 error on join
+                const { data: rawPendingVendors } = await supabase
                     .from('vendors')
-                    .select('*, profiles:user_id(full_name, avatar_url)')
+                    .select('*')
                     .eq('is_verified', false)
                     .limit(5);
 
-                setStats(s => ({ ...s, pendingVendors: pendingVendorsData || [] }));
+                let mergedPendingVendors: any[] = [];
+
+                if (rawPendingVendors && rawPendingVendors.length > 0) {
+                    const userIds = rawPendingVendors.map(v => v.user_id);
+                    const { data: profilesData } = await supabase
+                        .from('profiles')
+                        .select('id, full_name, avatar_url')
+                        .in('id', userIds);
+
+                    mergedPendingVendors = rawPendingVendors.map(vendor => ({
+                        ...vendor,
+                        profiles: profilesData?.find(p => p.id === vendor.user_id) || null
+                    }));
+                }
+
+                setStats(s => ({ ...s, pendingVendors: mergedPendingVendors }));
 
                 // Generate chart data (last 7 days)
                 const last7Days = Array.from({ length: 7 }, (_, i) => {
