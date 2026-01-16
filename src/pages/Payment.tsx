@@ -177,6 +177,9 @@ const Payment = () => {
         .insert({
           order_number: orderNumber,
           user_id: userId,
+          vendor_id: vendorId,
+          customer_name: customerInfo.name,
+          customer_email: customerInfo.email,
           shipping_address_id: address.id,
           status: 'pending',
           subtotal: total,

@@ -108,29 +108,57 @@ const AdminOrders = () => {
         try {
             setLoading(true);
 
-            // Fetch orders with all amount fields
+            // Fetch orders with items and nested product/vendor data to find the shop name
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select('*, total_amount')
+                .select(`
+                    *,
+                    order_items (
+                        product_id,
+                        unit_price,
+                        quantity,
+                        products (
+                            vendor_id,
+                            vendors (shop_name)
+                        )
+                    )
+                `)
                 .order('created_at', { ascending: false })
-                .limit(500); // Reasonable limit for admin
+                .limit(500);
 
             if (ordersError) throw ordersError;
 
-            const [vendorsRes, profilesRes] = await Promise.all([
-                supabase.from('vendors').select('id, shop_name'),
-                supabase.from('profiles').select('id, full_name')
-            ]);
+            // Fetch profiles separately for users
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, full_name');
 
-            const mergedOrders = ordersData?.map(order => ({
-                ...order,
-                total: order.total_amount || order.total, // Fallback for legacy
-                vendors: vendorsRes.data?.find(v => v.id === order.vendor_id) || null,
-                profiles: profilesRes.data?.find(p => p.id === order.user_id) || null
-            })) || [];
+            const processedOrders = ordersData?.map(order => {
+                // Try to find vendor from order level first
+                let shopName = 'Yarid Official';
 
-            setOrders(mergedOrders);
+                // If vendor_id is missing on order, check the first item's product vendor
+                const firstItem = order.order_items?.[0];
+                if (firstItem?.products?.vendors?.shop_name) {
+                    shopName = firstItem.products.vendors.shop_name;
+                }
+
+                const profile = profilesData?.find(p => p.id === order.user_id);
+
+                return {
+                    ...order,
+                    total: order.total_amount || order.total,
+                    // Mock vendors structure for UI compatibility
+                    vendors: { shop_name: shopName },
+                    profiles: profile,
+                    // Use customer_name if present, otherwise fallback to profile name, then Anonyme
+                    display_customer_name: order.customer_name || profile?.full_name || 'Anonyme'
+                };
+            }) || [];
+
+            setOrders(processedOrders);
         } catch (error: any) {
+            console.error("Fetch orders error:", error);
             toast.error("Erreur chargement commandes: " + error.message);
         } finally {
             setLoading(false);
@@ -434,11 +462,11 @@ const AdminOrders = () => {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <Store className="w-3 h-3 text-primary" />
-                                                    <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{order.vendors?.shop_name || 'Yarid Official'}</span>
+                                                    <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{order.vendors?.shop_name}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <ShoppingCart className="w-3 h-3 text-slate-400" />
-                                                    <span className="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">{order.customer_name || 'Anonyme'}</span>
+                                                    <span className="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">{order.display_customer_name}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -501,7 +529,7 @@ const AdminOrders = () => {
                                         </div>
                                         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                                             <Store className="w-3 h-3 text-slate-400" />
-                                            {order.vendors?.shop_name || 'Yarid'}
+                                            {order.vendors?.shop_name}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -525,7 +553,7 @@ const AdminOrders = () => {
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Client</p>
                                                 <div className="flex items-center gap-1.5">
                                                     <ShoppingCart className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-bold text-slate-600 truncate">{order.customer_name || 'Anonyme'}</span>
+                                                    <span className="text-xs font-bold text-slate-600 truncate">{order.display_customer_name}</span>
                                                 </div>
                                             </div>
                                             <div>
@@ -704,7 +732,7 @@ const AdminOrders = () => {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-slate-500">Nom Client:</span>
-                                            <span className="font-bold text-slate-800">{selectedOrder.customer_name || 'Anonyme'}</span>
+                                            <span className="font-bold text-slate-800">{selectedOrder.display_customer_name}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-slate-500">Email:</span>
