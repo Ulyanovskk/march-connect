@@ -49,10 +49,12 @@ const ShopDetail = lazy(() => import("./pages/ShopDetail"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes cache by default
-      gcTime: 1000 * 60 * 30, // Keep in memory for 30 minutes
-      retry: 1, // Only retry failed requests once
-      refetchOnWindowFocus: false, // Avoid unnecessary refetches when switching tabs
+      staleTime: 1000 * 60 * 10, // 10 minutes - données considérées fraîches
+      gcTime: 1000 * 60 * 60, // 1 heure en mémoire
+      retry: 1, // Une seule tentative en cas d'erreur
+      refetchOnWindowFocus: false, // Pas de refetch quand on revient sur l'onglet
+      refetchOnMount: false, // ⭐ Pas de refetch quand le composant se remonte
+      refetchOnReconnect: false, // Pas de refetch à la reconnexion
     },
   },
 });

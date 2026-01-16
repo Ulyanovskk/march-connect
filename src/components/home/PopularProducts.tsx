@@ -5,10 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const PopularProducts = () => {
-  const { data: products, isLoading } = useQuery({
-    queryKey: ['popular-products'],
+  // Utiliser le même cache que le Catalogue pour éviter les requêtes doubles
+  const { data: allProducts, isLoading } = useQuery({
+    queryKey: ['all-products'], // Même clé que Catalogue.tsx !
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('products')
         .select(`
           *,
@@ -16,15 +17,32 @@ const PopularProducts = () => {
             shop_name,
             is_verified,
             city
+          ),
+          category:categories (
+            name
           )
         `)
         .eq('is_active', true)
-        .limit(8);
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
-      return data;
-    }
+
+      return (data || [])
+        .filter(product =>
+          product.id &&
+          product.name &&
+          product.price &&
+          product.images &&
+          product.images.length > 0
+        );
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 heure
   });
+
+  // Prendre seulement les 8 premiers produits
+  const products = allProducts?.slice(0, 8) || [];
 
   return (
     <section className="py-10 md:py-16 bg-muted/30">
@@ -60,7 +78,7 @@ const PopularProducts = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {(products as any[])?.map((product) => (
+            {products.map((product: any) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
