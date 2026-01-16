@@ -71,30 +71,35 @@ const ProductReviews = ({ productId, onReviewsChange }: ProductReviewsProps) => 
     const fetchReviews = async () => {
         try {
             console.log('Fetching reviews for product:', productId);
-            const { data, error } = await supabase
+            const { data: reviewsData, error: reviewsError } = await supabase
                 .from('product_reviews')
                 .select('*')
                 .eq('product_id', productId)
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Supabase error fetching reviews:', error);
-                // toast.error('Erreur lors de la récupération des avis: ' + error.message);
-                throw error;
+            if (reviewsError) throw reviewsError;
+
+            if (!reviewsData || reviewsData.length === 0) {
+                setReviews([]);
+                if (onReviewsChange) onReviewsChange(0);
+                return;
             }
 
-            console.log('Reviews data received:', data);
+            const userIds = [...new Set(reviewsData.map(r => r.user_id))];
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', userIds);
 
-            // Pour le moment, on simule les profils si le join ne marche pas
-            const dataReviews = (data || []).map(r => ({
-                ...r,
-                profiles: { full_name: 'Utilisateur', avatar_url: null }
+            const mergedReviews = reviewsData.map(review => ({
+                ...review,
+                profiles: profilesData?.find(p => p.id === review.user_id) || { full_name: 'Acheteur Vérifié', avatar_url: null }
             }));
 
-            setReviews(dataReviews);
-            if (onReviewsChange) onReviewsChange(dataReviews.length);
+            setReviews(mergedReviews);
+            if (onReviewsChange) onReviewsChange(mergedReviews.length);
         } catch (err) {
-            console.error('Catch error fetching reviews:', err);
+            console.error('Final error fetching reviews:', err);
         } finally {
             setIsLoading(false);
         }
