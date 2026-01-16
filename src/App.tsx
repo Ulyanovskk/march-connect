@@ -5,9 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import ScrollToTop from "./components/layout/ScrollToTop";
-import LoadingScreen from "./components/layout/LoadingScreen";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ScrollToTop from "@/components/layout/ScrollToTop";
+import LoadingScreen from "@/components/layout/LoadingScreen";
 
 // Lazy-loaded components for better performance
 const Index = lazy(() => import("./pages/Index"));
