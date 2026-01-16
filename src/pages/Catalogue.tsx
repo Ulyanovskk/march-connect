@@ -36,14 +36,13 @@ const Catalogue = () => {
   const priceRange = searchParams.get('price') || '';
   const searchQuery = searchParams.get('q') || '';
 
-  // Products Fetching with performance optimization (Server-side filtering where possible)
+  // Products Fetching - Load once, filter client-side for instant filtering
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products', selectedCategory, selectedCities.join(','), priceRange, searchQuery],
+    queryKey: ['all-products'], // Cache unique pour tous les produits
     queryFn: async () => {
-      console.log('Fetching products...');
+      console.log('Fetching all products...');
 
-      // Requête simple et directe
-      let query = supabase
+      const { data, error } = await supabase
         .from('products')
         .select(`
           *,
@@ -56,52 +55,33 @@ const Catalogue = () => {
             name
           )
         `)
-        .eq('is_active', true);
-
-      // Filtre de recherche serveur
-      if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
-      }
-
-      const { data, error } = await query
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (error) {
         console.error('Products fetch error:', error);
         throw error;
       }
 
-      console.log(`Found ${data?.length || 0} products`);
+      console.log(`Loaded ${data?.length || 0} products`);
 
-      // Filtrer les produits valides
-      const validProducts = (data || []).filter(product =>
-        product.id &&
-        product.name &&
-        product.price &&
-        product.images &&
-        product.images.length > 0
-      );
-
-      console.log(`Valid products: ${validProducts.length}`);
-
-      if (validProducts.length > 0) {
-        console.log('First valid product sample:', {
-          id: validProducts[0].id,
-          name: validProducts[0].name,
-          price: validProducts[0].price,
-          stock: validProducts[0].stock,
-          images: validProducts[0].images?.length || 0
-        });
-      }
-
-      return (validProducts || []).map(p => ({
-        ...p,
-        category_name: p.category?.name || p.category_name // Fallback if name is in the object
-      }));
+      // Filtrer les produits valides et mapper
+      return (data || [])
+        .filter(product =>
+          product.id &&
+          product.name &&
+          product.price &&
+          product.images &&
+          product.images.length > 0
+        )
+        .map(p => ({
+          ...p,
+          category_name: p.category?.name || p.category_name
+        }));
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
-    gcTime: 1000 * 60 * 30, // 30 minutes in memory
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
+    gcTime: 1000 * 60 * 60, // 1 heure en mémoire
   });
 
   // Static categories list (matching converted slugs from category names)
