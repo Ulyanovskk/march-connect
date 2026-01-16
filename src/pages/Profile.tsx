@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ import { formatPrice } from '@/lib/demo-data';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { QRCodeCanvas } from 'qrcode.react';
+import ProductCard from '@/components/ui/ProductCard';
+import { Heart as HeartIcon } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -32,17 +34,32 @@ const Profile = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
+    const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(() => {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('tab') || 'personal';
+        return searchParams.get('tab') || 'personal';
     });
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any>(null);
 
+    // Synchroniser l'onglet avec l'URL si elle change
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
+    // Mettre à jour l'URL quand on change d'onglet manuellement
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId);
+        setSearchParams({ tab: tabId });
+    };
+
     useEffect(() => {
         fetchProfileAndOrders();
-    }, []);
+    }, [activeTab]);
 
     const fetchProfileAndOrders = async () => {
         try {
@@ -133,6 +150,45 @@ const Profile = () => {
                 }
             } catch (err) {
                 console.error('Detailed orders fetch error:', err);
+            }
+
+            // Fetch Wishlist in 2 steps for maximum reliability
+            try {
+                const { data: wishlistEntries, error: wishError } = await supabase
+                    .from('wishlist')
+                    .select('product_id')
+                    .eq('user_id', session.user.id);
+
+                if (wishError) throw wishError;
+
+                if (wishlistEntries && wishlistEntries.length > 0) {
+                    const productIds = wishlistEntries.map(entry => entry.product_id);
+                    const { data: productsData, error: productsError } = await supabase
+                        .from('products')
+                        .select(`
+                            id,
+                            name,
+                            price,
+                            original_price,
+                            images,
+                            stock,
+                            vendor_id,
+                            vendor:vendors (
+                                shop_name,
+                                is_verified,
+                                city
+                            )
+                        `)
+                        .in('id', productIds)
+                        .eq('is_active', true);
+
+                    if (productsError) throw productsError;
+                    setWishlistProducts(productsData || []);
+                } else {
+                    setWishlistProducts([]);
+                }
+            } catch (err) {
+                console.error('Manual wishlist fetch error:', err);
             }
 
         } catch (error: any) {
@@ -316,11 +372,11 @@ const Profile = () => {
 
     const menuItems = [
         { id: 'personal', label: 'Profil Personnel', icon: User, color: 'text-blue-500', bg: 'bg-blue-50' },
+        { id: 'orders', label: 'Mes Commandes', icon: ShoppingBag, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+        { id: 'wishlist', label: 'Ma Wishlist', icon: HeartIcon, color: 'text-rose-500', bg: 'bg-rose-50' },
         ...(isVendor ? [
-            { id: 'shop', label: 'Mes Boutiques', icon: Store, color: 'text-orange-500', bg: 'bg-orange-50' }
-        ] : [
-            { id: 'orders', label: 'Mes Commandes', icon: ShoppingBag, color: 'text-emerald-500', bg: 'bg-emerald-50' }
-        ]),
+            { id: 'shop', label: 'Ma Boutique', icon: Store, color: 'text-orange-500', bg: 'bg-orange-50' }
+        ] : []),
         { id: 'security', label: 'Sécurité', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-50' },
         { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50' },
     ];
@@ -384,7 +440,7 @@ const Profile = () => {
                                     {menuItems.map((item) => (
                                         <button
                                             key={item.id}
-                                            onClick={() => setActiveTab(item.id)}
+                                            onClick={() => handleTabChange(item.id)}
                                             className={cn(
                                                 "flex-none lg:w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group whitespace-nowrap lg:whitespace-normal",
                                                 activeTab === item.id
@@ -685,7 +741,7 @@ const Profile = () => {
                             )}
 
                             {/* Orders Tab */}
-                            {activeTab === 'orders' && !isVendor && (
+                            {activeTab === 'orders' && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                                         <div className="space-y-1">
@@ -809,6 +865,53 @@ const Profile = () => {
                                         <p className="text-muted-foreground max-w-md mx-auto mb-8">Nous mettons à jour notre système de sécurité. Pour le moment, seul le changement d'email est restreint. Vous pourrez bientôt modifier votre mot de passe ici.</p>
                                         <Button variant="outline" className="rounded-2xl h-12 font-bold px-8">En savoir plus</Button>
                                     </Card>
+                                </div>
+                            )}
+
+                            {/* Wishlist Tab */}
+                            {activeTab === 'wishlist' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <h1 className="text-3xl font-black tracking-tight">Ma Wishlist</h1>
+                                            <p className="text-muted-foreground font-medium">Retrouvez tous vos coups de cœur</p>
+                                        </div>
+                                        <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-muted-foreground/10 font-black text-xs h-9 flex items-center gap-2">
+                                            <span className="text-muted-foreground uppercase tracking-widest text-[9px]">Articles</span>
+                                            <span className="text-rose-500 text-sm">{wishlistProducts.length}</span>
+                                        </div>
+                                    </div>
+
+                                    {wishlistProducts.length === 0 ? (
+                                        <Card className="border-none shadow-xl shadow-gray-200/40 rounded-3xl p-16 text-center bg-white">
+                                            <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                <HeartIcon className="w-10 h-10 text-rose-300" />
+                                            </div>
+                                            <h3 className="text-xl font-bold mb-2">Votre wishlist est vide</h3>
+                                            <p className="text-muted-foreground font-medium mb-8 max-w-xs mx-auto">Parcourez le catalogue et cliquez sur le cœur pour ajouter des produits ici.</p>
+                                            <Button asChild size="lg" className="rounded-full px-10 h-14 font-black">
+                                                <Link to="/catalogue">Découvrir des produits</Link>
+                                            </Button>
+                                        </Card>
+                                    ) : (
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {wishlistProducts.map((product) => (
+                                                <ProductCard
+                                                    key={product.id}
+                                                    id={product.id}
+                                                    name={product.name}
+                                                    price={product.price}
+                                                    originalPrice={product.original_price}
+                                                    image={product.images?.[0]}
+                                                    vendorName={product.vendor?.shop_name}
+                                                    vendorId={product.vendor_id}
+                                                    vendorCity={product.vendor?.city}
+                                                    isVerified={product.vendor?.is_verified}
+                                                    stock={product.stock}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, User, LogOut, Store, Package, TrendingUp } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, User, LogOut, Store, Package, TrendingUp, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -208,6 +208,13 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            {/* Wishlist */}
+            <Link to="/profile?tab=wishlist">
+              <Button variant="ghost" size="icon" className="relative touch-target text-rose-500 hover:text-rose-600 hover:bg-rose-50">
+                <Heart className="h-5 w-5" />
+              </Button>
+            </Link>
+
             {/* Cart */}
             <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative touch-target">
@@ -287,6 +294,14 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
               onClick={() => setIsMenuOpen(false)}
             >
               Catalogue
+            </Link>
+            <Link
+              to="/profile?tab=wishlist"
+              className="block px-4 py-3 rounded-lg hover:bg-muted transition-colors touch-target flex items-center gap-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <Heart className="h-4 w-4 text-rose-500" />
+              Ma Wishlist
             </Link>
             {user ? (
               <>

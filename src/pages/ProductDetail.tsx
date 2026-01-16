@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import ProductReviews from '@/components/product/ProductReviews';
+import { useWishlist } from '@/hooks/useWishlist';
 import { useProductViewTracking } from '@/hooks/useProductViewTracking';
 
 const ProductDetail = () => {
@@ -21,35 +22,10 @@ const ProductDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [reviewCount, setReviewCount] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { isLiked, isLiking, toggleWishlist } = useWishlist(id);
 
   // Track product views
   useProductViewTracking(id || '');
-
-  useEffect(() => {
-    checkUserAndWishlist();
-  }, [id]);
-
-  const checkUserAndWishlist = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUser = session?.user || null;
-    setUser(currentUser);
-
-    if (currentUser && id) {
-      const { data, error } = await supabase
-        .from('wishlist')
-        .select('id')
-        .eq('user_id', currentUser.id)
-        .eq('product_id', id)
-        .maybeSingle();
-
-      if (!error && data) {
-        setIsLiked(true);
-      }
-    }
-  };
 
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
@@ -170,44 +146,8 @@ const ProductDetail = () => {
     window.open(`https://wa.me/237695250379?text=${message}`, '_blank');
   };
 
-  const handleToggleWishlist = async () => {
-    if (!user) {
-      toast.error('Connectez-vous pour ajouter ce produit à vos favoris');
-      return;
-    }
-
-    if (isLiking) return;
-
-    setIsLiking(true);
-    try {
-      if (isLiked) {
-        const { error } = await supabase
-          .from('wishlist')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('product_id', id);
-
-        if (error) throw error;
-        setIsLiked(false);
-        toast.success('Retiré des favoris');
-      } else {
-        const { error } = await supabase
-          .from('wishlist')
-          .insert({
-            user_id: user.id,
-            product_id: id
-          });
-
-        if (error) throw error;
-        setIsLiked(true);
-        toast.success('Ajouté aux favoris');
-      }
-    } catch (err: any) {
-      console.error('Error toggling wishlist:', err);
-      toast.error('Une erreur est survenue');
-    } finally {
-      setIsLiking(false);
-    }
+  const handleToggleWishlist = () => {
+    toggleWishlist();
   };
 
   const handleShare = async () => {

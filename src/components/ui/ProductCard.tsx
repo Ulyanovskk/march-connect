@@ -7,7 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useProductViewTracking } from '@/hooks/useProductViewTracking';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface ProductCardProps {
   id: string;
@@ -36,6 +36,7 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const queryClient = useQueryClient();
+  const { isLiked, isLiking, toggleWishlist } = useWishlist(id);
   const discount = getDiscount(price, originalPrice ?? null);
   const isOutOfStock = stock <= 0;
 
@@ -99,6 +100,12 @@ const ProductCard = ({
     toast.success(`${name} ajouté au panier !`);
   };
 
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist();
+  };
+
   return (
     <div
       onMouseEnter={prefetchProduct}
@@ -127,10 +134,13 @@ const ProductCard = ({
 
         {/* Wishlist button */}
         <button
-          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-          aria-label="Ajouter aux favoris"
+          onClick={handleToggleWishlist}
+          disabled={isLiking}
+          className={`absolute top-3 right-3 h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-all hover:scale-110 active:scale-90 ${isLiked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+          aria-label={isLiked ? "Retirer des favoris" : "Ajouter aux favoris"}
         >
-          <Heart className="h-4 w-4 text-muted-foreground hover:text-destructive transition-colors" />
+          <Heart className={`h-4.5 w-4.5 transition-colors ${isLiked ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
         </button>
       </Link>
 
