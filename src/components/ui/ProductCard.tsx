@@ -6,6 +6,7 @@ import { formatPrice, getDiscount } from '@/lib/demo-data';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { useWishlist } from '@/hooks/useWishlist';
+import { optimizeImage, generateSrcSet } from '@/lib/imageOptimizer';
 
 interface ProductCardProps {
   id: string;
@@ -67,12 +68,12 @@ const ProductCard = ({
       {/* Image */}
       <Link to={`/product/${id}`} className="block relative aspect-square overflow-hidden bg-muted">
         <img
-          src={image}
+          src={optimizeImage(image, { width: 400, quality: 80 })}
+          srcSet={generateSrcSet(image, [200, 400, 600])}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           alt={name}
           loading="lazy"
           decoding="async"
-          width={300}
-          height={300}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 

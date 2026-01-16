@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ProductReviews from '@/components/product/ProductReviews';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useProductViewTracking } from '@/hooks/useProductViewTracking';
+import { optimizeImage, generateSrcSet } from '@/lib/imageOptimizer';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -188,9 +189,12 @@ const ProductDetail = () => {
           <div className="space-y-4">
             <div className="relative aspect-square bg-muted rounded-2xl overflow-hidden group">
               <img
-                src={images[currentImageIndex]}
+                src={optimizeImage(images[currentImageIndex], { width: 800, quality: 85 })}
+                srcSet={generateSrcSet(images[currentImageIndex], [400, 600, 800, 1200])}
+                sizes="(max-width: 1024px) 100vw, 50vw"
                 alt={product.name}
                 className="w-full h-full object-cover"
+                loading="eager"
               />
 
               {/* Navigation arrows */}
@@ -245,7 +249,7 @@ const ProductDetail = () => {
                     : 'border-transparent hover:border-muted-foreground/30'
                     }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={optimizeImage(img, { width: 100, quality: 70 })} alt="" className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
