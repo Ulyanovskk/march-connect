@@ -21,9 +21,35 @@ const ProductDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [reviewCount, setReviewCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   // Track product views
   useProductViewTracking(id || '');
+
+  useEffect(() => {
+    checkUserAndWishlist();
+  }, [id]);
+
+  const checkUserAndWishlist = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUser = session?.user || null;
+    setUser(currentUser);
+
+    if (currentUser && id) {
+      const { data, error } = await supabase
+        .from('wishlist')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .eq('product_id', id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setIsLiked(true);
+      }
+    }
+  };
 
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
@@ -144,6 +170,65 @@ const ProductDetail = () => {
     window.open(`https://wa.me/237695250379?text=${message}`, '_blank');
   };
 
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      toast.error('Connectez-vous pour ajouter ce produit à vos favoris');
+      return;
+    }
+
+    if (isLiking) return;
+
+    setIsLiking(true);
+    try {
+      if (isLiked) {
+        const { error } = await supabase
+          .from('wishlist')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', id);
+
+        if (error) throw error;
+        setIsLiked(false);
+        toast.success('Retiré des favoris');
+      } else {
+        const { error } = await supabase
+          .from('wishlist')
+          .insert({
+            user_id: user.id,
+            product_id: id
+          });
+
+        if (error) throw error;
+        setIsLiked(true);
+        toast.success('Ajouté aux favoris');
+      }
+    } catch (err: any) {
+      console.error('Error toggling wishlist:', err);
+      toast.error('Une erreur est survenue');
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: product?.name || 'Yarid Market',
+      text: `Découvrez ${product?.name} sur Yarid !`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Lien copié dans le presse-papier !');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header cartItemCount={itemCount} />
@@ -191,11 +276,20 @@ const ProductDetail = () => {
 
               {/* Action buttons */}
               <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <button className="w-10 h-10 bg-background/90 rounded-full flex items-center justify-center shadow-lg hover:bg-background transition-colors">
-                  <Heart className="w-5 h-5" />
+                <button
+                  onClick={handleToggleWishlist}
+                  disabled={isLiking}
+                  className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-xl transition-all active:scale-90 border-2 border-white text-gray-900"
+                  aria-label="Liker le produit"
+                >
+                  <Heart className={`w-6 h-6 transition-colors ${isLiked ? 'fill-primary text-primary' : 'hover:text-primary'}`} />
                 </button>
-                <button className="w-10 h-10 bg-background/90 rounded-full flex items-center justify-center shadow-lg hover:bg-background transition-colors">
-                  <Share2 className="w-5 h-5" />
+                <button
+                  onClick={handleShare}
+                  className="w-12 h-12 bg-white border-2 border-white rounded-full flex items-center justify-center shadow-xl text-gray-900 hover:text-primary transition-all active:scale-90"
+                  aria-label="Partager le produit"
+                >
+                  <Share2 className="w-6 h-6" />
                 </button>
               </div>
             </div>
