@@ -15,10 +15,12 @@ import ProductReviews from '@/components/product/ProductReviews';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useProductViewTracking } from '@/hooks/useProductViewTracking';
 import { optimizeImage, generateSrcSet } from '@/lib/imageOptimizer';
+import { useQueryClient } from '@tanstack/react-query';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { addItem, itemCount } = useCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -31,46 +33,39 @@ const ProductDetail = () => {
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
-      // Récupérer d'abord le produit
-      const { data: productData, error: productError } = await supabase
+      console.log('Fetching product details for:', id);
+      const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          category:categories (
+            name,
+            slug
+          ),
+          vendor:vendors (
+            shop_name,
+            is_verified,
+            city,
+            description,
+            created_at
+          )
+        `)
         .eq('id', id)
         .single();
 
-      if (productError) throw productError;
-      if (!productData) return null;
-
-      // Récupérer les données de catégorie si elles existent
-      let categoryData = null;
-      if (productData.category_id) {
-        const { data: cat, error: catError } = await supabase
-          .from('categories')
-          .select('name, slug')
-          .eq('id', productData.category_id)
-          .single();
-
-        if (!catError) categoryData = cat;
-      }
-
-      // Récupérer les données du vendeur
-      const { data: vendorData, error: vendorError } = await supabase
-        .from('vendors')
-        .select('shop_name, is_verified, city, description, created_at')
-        .eq('id', productData.vendor_id)
-        .single();
-
-      let vendorInfo = null;
-      if (!vendorError) vendorInfo = vendorData;
-
-      // Combiner les données
-      return {
-        ...productData,
-        category: categoryData,
-        vendor: vendorInfo
-      };
+      if (error) throw error;
+      return data;
     },
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 1000 * 60 * 30, // 30 minutes cache for details
+    initialData: () => {
+      // Tenter de récupérer les données depuis le cache global du catalogue
+      const allProducts = queryClient.getQueryData<any[]>(['all-products']);
+      if (allProducts) {
+        return allProducts.find((p) => p.id === id);
+      }
+      return undefined;
+    }
   });
 
   const discount = product ? getDiscount(product.price, product.original_price) : null;
