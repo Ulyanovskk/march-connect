@@ -56,7 +56,18 @@ const AdminFinance = () => {
 
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select('*')
+                .select(`
+                    *,
+                    order_items (
+                        product_id,
+                        unit_price,
+                        quantity,
+                        products (
+                            vendor_id,
+                            vendors (shop_name)
+                        )
+                    )
+                `)
                 .order('created_at', { ascending: false });
 
             if (ordersError) throw ordersError;
@@ -67,11 +78,23 @@ const AdminFinance = () => {
 
             const mergedTransactions = ordersData?.map(order => {
                 const vendor = vendorsData?.find(v => v.id === order.vendor_id);
+
+                // Smart lookup for shop name if vendor data is missing from direct link
+                let shop_name = vendor?.shop_name || 'Yarid Official';
+
+                // If vendor not found or shop_name missing, check order_items fallback
+                const firstItem = order.order_items?.[0];
+                if (shop_name === 'Yarid Official' && firstItem?.products?.vendors?.shop_name) {
+                    shop_name = firstItem.products.vendors.shop_name;
+                }
+
                 // Use vendor specific rate or default to 10% (0.10)
                 const rate = vendor?.commission_rate ? vendor.commission_rate / 100 : 0.10;
+
                 return {
                     ...order,
-                    vendors: vendor || null,
+                    vendors: { shop_name },
+                    original_vendor: vendor || null,
                     commissionRate: rate
                 };
             }) || [];
@@ -135,7 +158,7 @@ const AdminFinance = () => {
             return [
                 tr.id,
                 format(new Date(tr.created_at), 'yyyy-MM-dd'),
-                tr.vendors?.shop_name || 'System',
+                tr.vendors?.shop_name,
                 tr.total,
                 comm,
                 tr.total - comm,
