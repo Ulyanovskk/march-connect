@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { formatPrice, getDiscount } from '@/lib/demo-data';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useWishlist } from '@/hooks/useWishlist';
 
 interface ProductCardProps {
@@ -35,56 +33,12 @@ const ProductCard = ({
   stock = 1,
 }: ProductCardProps) => {
   const { addItem } = useCart();
-  const queryClient = useQueryClient();
   const { isLiked, isLiking, toggleWishlist } = useWishlist(id);
   const discount = getDiscount(price, originalPrice ?? null);
   const isOutOfStock = stock <= 0;
 
   // No click handler needed - tracking happens in ProductDetail page
-  // This keeps the navigation fast and reliable
-
-  const prefetchProduct = async () => {
-    try {
-      // Vérifier d'abord si le produit existe
-      const { data: productCheck, error: checkError } = await supabase
-        .from('products')
-        .select('id')
-        .eq('id', id)
-        .eq('is_active', true)
-        .single();
-
-      if (checkError || !productCheck) {
-        // Ne pas prefetch si le produit n'existe pas
-        return;
-      }
-
-      // Prefetch seulement si le produit existe
-      queryClient.prefetchQuery({
-        queryKey: ['product', id],
-        queryFn: async () => {
-          const { data, error } = await (supabase as any)
-            .from('products')
-            .select(`
-              *,
-              category:categories (name, slug),
-              vendor:vendors (
-                shop_name,
-                description,
-                created_at
-              )
-            `)
-            .eq('id', id)
-            .single();
-          if (error) throw error;
-          return data;
-        },
-        staleTime: 1000 * 60 * 5,
-      });
-    } catch (error) {
-      // Silencieux - on ne veut pas interrompre l'expérience utilisateur
-      console.debug('Prefetch failed for product:', id);
-    }
-  };
+  // Prefetch removed for performance - was causing too many requests
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -108,15 +62,17 @@ const ProductCard = ({
 
   return (
     <div
-      onMouseEnter={prefetchProduct}
       className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden"
     >
       {/* Image */}
-      <Link to={`/product/${id}`} className="block relative aspect-square overflow-hidden">
+      <Link to={`/product/${id}`} className="block relative aspect-square overflow-hidden bg-muted">
         <img
           src={image}
           alt={name}
           loading="lazy"
+          decoding="async"
+          width={300}
+          height={300}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
