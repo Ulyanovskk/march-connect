@@ -78,10 +78,16 @@ const AdminProducts = () => {
         try {
             setLoading(true);
 
+            // Refresh session to ensure admin rights are recognized
+            await supabase.auth.refreshSession();
+
             // 1. Fetch all products
             const { data: productsData, error: productsError } = await supabase
                 .from('products')
-                .select('*')
+                .select(`
+                    *,
+                    categories (name)
+                `)
                 .order('created_at', { ascending: false });
 
             if (productsError) throw productsError;
@@ -116,6 +122,7 @@ const AdminProducts = () => {
 
                 return {
                     ...product,
+                    category: product.categories?.name || 'Général',
                     vendors: {
                         shop_name: vendor?.shop_name || 'Boutique Inconnue',
                         shop_description: vendor?.description || 'Aucune description',
