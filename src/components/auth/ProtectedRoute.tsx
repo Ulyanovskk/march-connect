@@ -139,7 +139,7 @@ const ProtectedRoute = ({ children, requiredRole, allowDuringOnboarding = false 
         // If not on login/signup/landing, show toast
         const publicPaths = ['/', '/login', '/signup', '/auth/callback', '/vendeur/inscription'];
         if (!publicPaths.includes(location.pathname)) {
-            toast.error("Veuillez vous connecter pour accéder à cette page");
+            toast.error("Veuillez vous connecter ou créer un compte pour continuer.");
         }
         return <Navigate to="/login" state={{ from: location }} replace />;
     }

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import yaridLogo from '@/assets/yarid-logo.jpg';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPrice } from '@/lib/demo-data';
+import { toast } from 'sonner';
 
 interface HeaderProps {
   cartItemCount?: number;
@@ -87,8 +88,23 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Clear any remaining Yarid specific local data if necessary 
+      // but NOT the cart since we want it in guest mode
+
+      toast.success("Déconnexion réussie");
+
+      // Hard redirect to clear all state and avoid residual session redirects
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast.error("Erreur lors de la déconnexion");
+      // Fallback redirect
+      window.location.href = '/';
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {

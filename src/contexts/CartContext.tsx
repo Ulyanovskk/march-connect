@@ -171,7 +171,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             .from('cart_items')
             .update({ quantity: action === 'add' ? existing.quantity + quantity : quantity })
             .eq('id', existing.id);
-        } else if (action !== 'delete') {
+        } else {
           await supabase
             .from('cart_items')
             .insert({

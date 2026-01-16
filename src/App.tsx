@@ -73,8 +73,8 @@ const App = () => (
 
               {/* Protected Client Routes */}
               <Route path="/shop" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/catalogue" element={<ProtectedRoute><Catalogue /></ProtectedRoute>} />
-              <Route path="/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
+              <Route path="/catalogue" element={<Catalogue />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/boutique/:id" element={<ShopDetail />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />

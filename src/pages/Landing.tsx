@@ -13,9 +13,9 @@ const Landing = () => {
     // Redirect authenticated users away from Landing
     useEffect(() => {
         const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                const role = session.user.user_metadata?.role || 'client';
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const role = user.user_metadata?.role || 'client';
                 if (role === 'vendor') {
                     navigate('/vendor/dashboard');
                 } else {
