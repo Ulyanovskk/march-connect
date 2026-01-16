@@ -38,14 +38,16 @@ const CategoryCard = ({ name, slug, icon, productCount }: CategoryCardProps) => 
   return (
     <Link
       to={`/catalogue?category=${slug}`}
-      className="group flex flex-col items-center p-2 sm:p-4 bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 hover:-translate-y-1 touch-target min-h-[110px] sm:min-h-0"
+      className="group flex flex-col items-center p-2 sm:p-4 transition-all duration-300 hover:-translate-y-1 touch-target min-h-0"
     >
-      <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl bg-primary/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:bg-primary/20 transition-colors">
-        <IconComponent className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
+      <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-[22px] bg-primary/10 flex items-center justify-center mb-0 sm:mb-3 group-hover:bg-primary/20 transition-all duration-300">
+        <IconComponent className="h-9 w-9 sm:h-12 sm:w-12 text-primary group-hover:scale-110 transition-transform duration-300" />
       </div>
-      <h3 className="text-[10px] sm:text-sm font-medium text-center text-foreground line-clamp-2 leading-tight break-words px-1">{name}</h3>
+      <h3 className="mt-2 text-[9px] sm:text-sm font-medium sm:font-bold text-center text-muted-foreground/80 group-hover:text-primary transition-colors line-clamp-1 sm:line-clamp-2 leading-tight break-words px-1">
+        {name}
+      </h3>
       {productCount !== undefined && (
-        <p className="text-[9px] sm:text-xs text-muted-foreground mt-1">{productCount} produits</p>
+        <p className="hidden sm:block text-[9px] sm:text-xs text-muted-foreground mt-1">{productCount} produits</p>
       )}
     </Link>
   );
