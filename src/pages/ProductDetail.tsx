@@ -20,6 +20,7 @@ const ProductDetail = () => {
   const { addItem, itemCount } = useCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [reviewCount, setReviewCount] = useState(0);
 
   // Track product views
   useProductViewTracking(id || '');
@@ -230,7 +231,7 @@ const ProductDetail = () => {
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-yarid-yellow text-yarid-yellow" />
                   <span className="font-medium">4.8</span>
-                  <span>(24 avis)</span>
+                  <span>({reviewCount} avis)</span>
                 </div>
                 <span>•</span>
                 <span>{product.views || 0} vues</span>
@@ -368,7 +369,7 @@ const ProductDetail = () => {
 
         {/* Product Reviews Section */}
         <div className="mt-12 max-w-4xl">
-          <ProductReviews productId={product.id} />
+          <ProductReviews productId={product.id} onReviewsChange={setReviewCount} />
         </div>
       </main>
 
