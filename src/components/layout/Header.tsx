@@ -63,17 +63,27 @@ const Header = ({ cartItemCount = 0 }: HeaderProps) => {
   }, [searchParams]);
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    let mounted = true;
 
-    // Listen for auth changes
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted) {
+        setUser(session?.user ?? null);
+      }
+    };
+
+    getSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (mounted) {
+        setUser(session?.user ?? null);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
