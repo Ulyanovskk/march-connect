@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import ProductCard from '@/components/ui/ProductCard';
+import ProductCard, { ProductCardSkeleton } from '@/components/ui/ProductCard';
 import { BadgeCheck, MapPin, Store, Calendar, Package, Loader2, ChevronLeft, User, Camera, Image as ImageIcon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
@@ -380,7 +380,7 @@ const ShopDetail = () => {
                     {productsLoading ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                             {[...Array(10)].map((_, i) => (
-                                <div key={i} className="aspect-[4/5] bg-slate-50 rounded-3xl animate-pulse" />
+                                <ProductCardSkeleton key={i} />
                             ))}
                         </div>
                     ) : (products?.length || 0) > 0 ? (

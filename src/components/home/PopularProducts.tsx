@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight, TrendingUp, Loader2 } from 'lucide-react';
-import ProductCard from '@/components/ui/ProductCard';
+import ProductCard, { ProductCardSkeleton } from '@/components/ui/ProductCard';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -72,13 +72,13 @@ const PopularProducts = () => {
         </div>
 
         {/* Products grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {products.map((product: any) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          {isLoading ? (
+            Array(8).fill(0).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))
+          ) : (
+            products.map((product: any) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
@@ -92,9 +92,9 @@ const PopularProducts = () => {
                 isVerified={product.vendor?.is_verified}
                 stock={product.stock}
               />
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
 
         {/* Mobile link */}
         <Link

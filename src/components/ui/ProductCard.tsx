@@ -63,7 +63,8 @@ const ProductCard = ({
 
   return (
     <div
-      className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden"
+      className="group bg-card rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden h-full flex flex-col"
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 400px' }}
     >
       {/* Image */}
       <Link to={`/product/${id}`} className="block relative aspect-square overflow-hidden bg-muted">
@@ -102,7 +103,7 @@ const ProductCard = ({
       </Link>
 
       {/* Content */}
-      <div className="p-3 sm:p-4">
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
         {/* Vendor info */}
         {vendorName && (
           <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mb-1.5">
@@ -132,7 +133,7 @@ const ProductCard = ({
         </Link>
 
         {/* Price */}
-        <div className="flex flex-wrap items-baseline gap-1 sm:gap-2 mb-3">
+        <div className="flex flex-wrap items-baseline gap-1 sm:gap-2 mb-3 mt-auto">
           <span className="text-sm sm:text-lg font-bold text-primary">{formatPrice(price)}</span>
           {originalPrice && originalPrice > price && (
             <span className="text-[10px] sm:text-sm text-muted-foreground line-through">
@@ -164,5 +165,23 @@ const ProductCard = ({
     </div>
   );
 };
+
+export const ProductCardSkeleton = () => (
+  <div className="bg-card rounded-2xl shadow-soft overflow-hidden h-full animate-pulse flex flex-col">
+    <div className="aspect-square bg-muted" />
+    <div className="p-3 sm:p-4 flex-1 flex flex-col">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="h-3 w-16 bg-muted rounded" />
+        <div className="h-3 w-12 bg-muted rounded ml-auto" />
+      </div>
+      <div className="h-4 w-full bg-muted rounded mb-2" />
+      <div className="h-4 w-2/3 bg-muted rounded mb-4" />
+      <div className="mt-auto">
+        <div className="h-6 w-20 bg-muted rounded mb-3" />
+        <div className="h-9 w-full bg-muted rounded-lg" />
+      </div>
+    </div>
+  </div>
+);
 
 export default ProductCard;
