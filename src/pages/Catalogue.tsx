@@ -127,7 +127,8 @@ const Catalogue = () => {
       result = result.filter(product =>
         product.name.toLowerCase().includes(query) ||
         (product.description && product.description.toLowerCase().includes(query)) ||
-        (product.category_name && product.category_name.toLowerCase().includes(query))
+        (product.category_name && product.category_name.toLowerCase().includes(query)) ||
+        (product.vendor?.shop_name && product.vendor.shop_name.toLowerCase().includes(query))
       );
     }
 
