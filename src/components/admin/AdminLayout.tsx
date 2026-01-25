@@ -97,7 +97,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     if (!isAdmin) return null;
 
     return (
-        <div className="h-screen bg-[#F8FAFC] flex overflow-hidden">
+        <div className="h-screen h-[100dvh] bg-[#F8FAFC] flex overflow-hidden relative">
             {/* Sidebar */}
             <aside
                 className={`fixed inset-y-0 left-0 bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out lg:relative ${isSidebarOpen ? 'w-72 translate-x-0 pointer-events-auto' : '-translate-x-full w-72 lg:w-20 lg:translate-x-0 pointer-events-none'}`}
@@ -171,7 +171,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
-                <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-50 overflow-hidden">
+                <header className="sticky top-0 h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-50 w-full">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
