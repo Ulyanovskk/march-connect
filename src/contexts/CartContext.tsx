@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -39,24 +39,37 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const [user, setUser] = useState<any>(null);
+  const lastEventRef = useRef<string | null>(null);
 
   // Initialize session and listen for changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        syncCartWithDB(session.user.id);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        syncCartWithDB(currentUser.id);
       }
+      lastEventRef.current = 'INITIAL_SESSION';
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        migrateGuestCart(session.user.id);
+      const previousEvent = lastEventRef.current;
+
+      // Only migrate guest cart when explicitly signing in from a non-active state
+      // to avoid triggering this on every session refresh (which also fires SIGNED_IN)
+      if (event === 'SIGNED_IN' && currentUser && (previousEvent === 'SIGNED_OUT' || previousEvent === 'INITIAL_SESSION' || previousEvent === null)) {
+        migrateGuestCart(currentUser.id);
+      } else if (event === 'SIGNED_IN' && currentUser && previousEvent === 'TOKEN_REFRESHED') {
+        // Just sync on refresh, no migration needed
+        syncCartWithDB(currentUser.id);
       } else if (event === 'SIGNED_OUT') {
         // We keep the items in state/localStorage for guest mode
       }
+
+      lastEventRef.current = event;
     });
 
     return () => subscription.unsubscribe();
@@ -104,7 +117,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const migrateGuestCart = async (userId: string) => {
     try {
-      // Get current local items
       const localItems = [...items];
       if (localItems.length === 0) {
         syncCartWithDB(userId);
@@ -117,17 +129,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         .select('product_id, quantity')
         .eq('user_id', userId);
 
+      let migratedCount = 0;
+
       // 2. Prepare migration
       for (const item of localItems) {
         const existing = existingItems?.find(ei => ei.product_id === item.id);
 
         if (existing) {
-          // Update quantity if exists
-          await supabase
-            .from('cart_items')
-            .update({ quantity: existing.quantity + item.quantity })
-            .eq('user_id', userId)
-            .eq('product_id', item.id);
+          // If the item exists in DB with different quantity, update it
+          if (existing.quantity !== item.quantity) {
+            await supabase
+              .from('cart_items')
+              .update({ quantity: item.quantity })
+              .eq('user_id', userId)
+              .eq('product_id', item.id);
+            migratedCount++;
+          }
         } else {
           // Insert new
           await supabase
@@ -137,12 +154,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               product_id: item.id,
               quantity: item.quantity
             });
+          migratedCount++;
         }
       }
 
       // 3. Final sync to get full product details back
       await syncCartWithDB(userId);
-      toast.success("Votre panier a été synchronisé !");
+
+      // Only show toast if we actually moved/updated items from a guest state
+      // and we are NOT in an admin dashboard (to avoid spamming admin)
+      const isAdminPath = window.location.pathname.startsWith('/admin');
+      if (migratedCount > 0 && !isAdminPath) {
+        toast.success("Votre panier a été synchronisé !");
+      }
     } catch (error) {
       console.error('Error migrating guest cart:', error);
     }
