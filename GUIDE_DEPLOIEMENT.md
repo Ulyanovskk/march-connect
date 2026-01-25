@@ -119,33 +119,28 @@ Une fois le projet créé :
 
 **Option A : Via la CLI Supabase (Recommandé)**
 
+L'utilisation de `npx` est recommandée car elle ne nécessite pas d'installation permanente et évite les conflits système.
+
 ```bash
-# Installer la CLI Supabase
- 1. Installer Scoop (si pas déjà installé)
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-irm get.scoop.sh | iex
+# 1. Se connecter à votre compte Supabase
+npx supabase login
 
- 2. Installer Supabase CLI
-scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-scoop install supabase
-# Se connecter à votre projet Supabase
-supabase login
+# 2. Lier votre projet local au projet Supabase en ligne
+# Remplacez VOTRE_PROJECT_REF par l'ID de votre projet (ex: mhbhzbgxyjqkokilxpfw)
+npx supabase link --project-ref VOTRE_PROJECT_REF
 
-# Lier votre projet local au projet Supabase en ligne
-supabase link --project-ref VOTRE_PROJECT_REF
-# (Le project-ref se trouve dans l'URL de votre projet Supabase)
-
-# Appliquer les migrations
-supabase db push
+# 3. Appliquer les migrations (création des tables)
+npx supabase db push
 ```
 
-**Option B : Via le Dashboard Supabase**
+**Option B : Via le Dashboard Supabase (Manuel)**
 
-1. Allez dans **SQL Editor** dans le menu gauche
-2. Ouvrez votre fichier de migration : `supabase/migrations/20260106110229_702b9a69-729e-408d-a14f-9280be02ff16.sql`
-3. Copiez tout le contenu SQL
-4. Collez-le dans l'éditeur SQL
-5. Cliquez sur **"Run"** 
+1. Allez dans **SQL Editor** dans le menu gauche de Supabase.
+2. Cliquez sur **"+ New Query"**.
+3. Ouvrez votre fichier de migration local : `supabase/migrations/20260106120000_complete_schema.sql`
+4. Copiez tout le contenu SQL.
+5. Collez-le dans l'éditeur SQL du Dashboard.
+6. Cliquez sur **"Run"**.
 
  Votre base de données est maintenant configurée !
 

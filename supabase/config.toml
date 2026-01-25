@@ -8,5 +8,6 @@ verify_jwt = false
 
 [auth]
 # Leaked password protection (HIBP)
-pwned_password_protection_enabled = true
-enable_pwned_passwords = true
+# Ces clés sont invalides dans cette version de la CLI
+# pwned_password_protection_enabled = true
+# enable_pwned_passwords = true
